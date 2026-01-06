@@ -50,19 +50,32 @@ def parse_hpo_annotations(annotations_file_path):
                 continue
 
             parts = line.split('\t')
-
+                    
+            # parts[0] -> database_id
             # parts[1] -> disease_name
             # parts[3] -> HPO ID
-            if len(parts) >= 4 and parts[3].startswith('HP:'):
+            # parts[10] -> aspect
+
+            if len(parts) >= 11 and parts[3].startswith("HP:"):
+                database_id = parts[0].strip()
                 disease_name = parts[1].strip()
                 hpo_id = parts[3].strip()
+                aspect = parts[10].strip()
+
+                # Keep only disease → phenotype annotations
+                if aspect != "P":
+                    continue
+
+                # Filter out phenotype-only entries
+                if ":" not in database_id:
+                    continue
 
                 if disease_name not in disease_hpo_map:
                     disease_hpo_map[disease_name] = set()
 
                 disease_hpo_map[disease_name].add(hpo_id)
 
-    return disease_hpo_map
+        return disease_hpo_map
 
 
 def main():
