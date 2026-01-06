@@ -3,4 +3,8 @@
 #Virtual environments
 backend/.venv
 
+#raw_data
+data/raw/
+
+
 learning_logs/
