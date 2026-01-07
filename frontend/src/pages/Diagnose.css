@@ -1,0 +1,13 @@
+.diagnose-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 60px;
+}
+
+.diagnose-card {
+  background-color: white;
+  width: 700px;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
