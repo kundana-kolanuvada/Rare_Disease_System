@@ -1,5 +1,6 @@
 import json
 import os
+from app.services.normalizer import normalize_hpo_ids
 
 
 """
@@ -21,6 +22,10 @@ def jaccard_similarity(set_a, set_b):
     return len(intersection) / len(union)
 
 def match_diseases(user_hpo_ids, top_k = 5):
+    user_hpo_ids = normalize_hpo_ids(user_hpo_ids)
+
+    if not user_hpo_ids:
+        return []
     user_set = set(user_hpo_ids)
     results = []
 
