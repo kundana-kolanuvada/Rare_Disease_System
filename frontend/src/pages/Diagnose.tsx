@@ -17,6 +17,8 @@ const Diagnose = () => {
     previousDiagnoses: '',
     previousTests: '',
   });
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [analysisStarted, setAnalysisStarted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,13 +29,48 @@ const Diagnose = () => {
   ) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
   };
 
-  const nextStep = () => setStep(prev => prev + 1);
+  const validateStep = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (step === 1) {
+      if (!formData.age) newErrors.age = 'Age is required';
+      if (!formData.sex) newErrors.sex = 'Please select biological sex';
+      if (!formData.country) newErrors.country = 'Country is required';
+    } else if (step === 2) {
+      if (!formData.symptoms || formData.symptoms.trim().length < 10) {
+        newErrors.symptoms = 'Please describe symptoms in more detail (min 10 chars).';
+      }
+    } else if (step === 3) {
+      if (!formData.familyHistory) newErrors.familyHistory = 'Please select an option';
+      if (!formData.symptomOnset) newErrors.symptomOnset = 'Please select when this started';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const nextStep = () => {
+    if (validateStep()) {
+      setStep(prev => prev + 1);
+    }
+  };
+
   const prevStep = () => setStep(prev => prev - 1);
   const goToStep = (stepNumber: number) => setStep(stepNumber);
 
   const handleRunAnalysis = async () => {
+    if (!validateStep()) return;
+
     setIsLoading(true);
     setError(null);
     setAnalysisStarted(true);
@@ -114,24 +151,25 @@ const Diagnose = () => {
       }
     }
 
-    // Render form steps 1–4
     switch (step) {
       case 1:
         return (
           <div className="form-step">
             <h2>Step 1 of 4: Patient Basics</h2>
             <div className="form-group">
-              <label>Age</label>
-              <input type="number" name="age" value={formData.age} onChange={handleChange} placeholder="e.g., 23" />
+              <label>Age *</label>
+              <input type="number" name="age" className={errors.age ? 'input-error' : ''} value={formData.age} onChange={handleChange} placeholder="e.g., 23" />
+              {errors.age && <span className="error-text">{errors.age}</span>}
             </div>
             <div className="form-group">
-              <label>Sex</label>
+              <label>Sex *</label>
               <div className="radio-group">
                 <label><input type="radio" name="sex" value="Male" onChange={handleChange} checked={formData.sex === 'Male'} /> Male</label>
                 <label><input type="radio" name="sex" value="Female" onChange={handleChange} checked={formData.sex === 'Female'} /> Female</label>
                 <label><input type="radio" name="sex" value="Intersex" onChange={handleChange} checked={formData.sex === 'Intersex'} /> Intersex</label>
                 <label><input type="radio" name="sex" value="Prefer not to say" onChange={handleChange} checked={formData.sex === 'Prefer not to say'} /> Prefer not to say</label>
               </div>
+              {errors.sex && <span className="error-text">{errors.sex}</span>}
             </div>
             <div className="form-group">
               <label>Ethnicity (optional)</label>
@@ -147,8 +185,9 @@ const Diagnose = () => {
               </select>
             </div>
             <div className="form-group">
-              <label>Country/Region</label>
-              <input type="text" name="country" value={formData.country} onChange={handleChange} placeholder="e.g., United States" />
+              <label>Country/Region *</label>
+              <input type="text" name="country" className={errors.country ? 'input-error' : ''} value={formData.country} onChange={handleChange} placeholder="e.g., United States" />
+              {errors.country && <span className="error-text">{errors.country}</span>}
             </div>
           </div>
         );
@@ -157,9 +196,10 @@ const Diagnose = () => {
           <div className="form-step">
             <h2>Step 2 of 4: Symptoms Description</h2>
             <div className="form-group">
-              <label>Describe the symptoms in your own words (as detailed as possible).</label>
-              <p className="example-text">Example: "23-year-old woman with loose joints, frequent dislocations, easily bruised skin, slow wound healing, and similar problems in her father."</p>
-              <textarea name="symptoms" value={formData.symptoms} onChange={handleChange} rows={8}></textarea>
+              <label>Describe the symptoms *</label>
+              <p className="example-text">Example: "23-year-old woman with loose joints, frequent dislocations, easily bruised skin..."</p>
+              <textarea name="symptoms" className={errors.symptoms ? 'input-error' : ''} value={formData.symptoms} onChange={handleChange} rows={8}></textarea>
+              {errors.symptoms && <span className="error-text">{errors.symptoms}</span>}
             </div>
           </div>
         );
@@ -168,19 +208,20 @@ const Diagnose = () => {
           <div className="form-step">
             <h2>Step 3 of 4: Family & History</h2>
             <div className="form-group">
-              <label>Family history of similar symptoms?</label>
+              <label>Family history of similar symptoms? *</label>
               <div className="radio-group">
                 <label><input type="radio" name="familyHistory" value="Yes" onChange={handleChange} checked={formData.familyHistory === 'Yes'} /> Yes</label>
                 <label><input type="radio" name="familyHistory" value="No" onChange={handleChange} checked={formData.familyHistory === 'No'} /> No</label>
                 <label><input type="radio" name="familyHistory" value="Unknown" onChange={handleChange} checked={formData.familyHistory === 'Unknown'} /> Unknown</label>
               </div>
+              {errors.familyHistory && <span className="error-text">{errors.familyHistory}</span>}
               {formData.familyHistory === 'Yes' && (
                 <textarea name="familyHistoryDescription" value={formData.familyHistoryDescription} onChange={handleChange} placeholder="Describe who and what symptoms."></textarea>
               )}
             </div>
             <div className="form-group">
-              <label>Onset of symptoms</label>
-              <select name="symptomOnset" value={formData.symptomOnset} onChange={handleChange}>
+              <label>Onset of symptoms *</label>
+              <select name="symptomOnset" className={errors.symptomOnset ? 'input-error' : ''} value={formData.symptomOnset} onChange={handleChange}>
                 <option value="">Select...</option>
                 <option value="Since birth">Since birth</option>
                 <option value="Early childhood">Early childhood</option>
@@ -188,6 +229,7 @@ const Diagnose = () => {
                 <option value="Adulthood">Adulthood</option>
                 <option value="Recent (last 6 months)">Recent (last 6 months)</option>
               </select>
+              {errors.symptomOnset && <span className="error-text">{errors.symptomOnset}</span>}
             </div>
             <div className="form-group">
               <label>Previous diagnoses or labels (if any)</label>

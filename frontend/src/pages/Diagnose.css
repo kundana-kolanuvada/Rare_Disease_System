@@ -6,7 +6,13 @@
     align-items: flex-start; /* Align to top, not center vertically */
     min-height: 100vh;
     padding: 40px 20px;
-    background-color: #f0f2f5; /* Light grey background */
+    background: linear-gradient(
+    180deg,
+    #d4e4f5 30%,
+    #b9cfe3 45%,
+    #ffffff 100%
+  );
+    /* background-color: #f0f2f5; Light grey background */
 }
 
 .diagnose-card {
@@ -380,4 +386,24 @@
 
 .error-message .btn-primary {
   margin-top: 15px;
+}
+
+.error-text {
+    color: #dc3545;
+    font-size: 0.85rem;
+    margin-top: 5px;
+    display: block;
+    font-weight: 500;
+}
+
+.input-error {
+    border: 1px solid #dc3545 !important;
+    background-color: #fff8f8 !important;
+}
+
+/* Optional: adds a subtle red glow to radio groups with errors */
+.form-group:has(.error-text) .radio-group {
+    padding: 5px;
+    border-radius: 4px;
+    background-color: #fff8f8;
 }
