@@ -1,18 +1,212 @@
-import "./Diagnose.css";
+import React, { useState } from 'react';
+import './Diagnose.css';
 
-function Diagnose() {
+const Diagnose = () => {
+  const [step, setStep] = useState(1);
+  const [formData, setFormData] = useState({
+    age: '',
+    sex: '',
+    ethnicity: '',
+    country: '',
+    symptoms: '',
+    familyHistory: '',
+    familyHistoryDescription: '',
+    symptomOnset: '',
+    previousDiagnoses: '',
+    previousTests: '',
+  });
+  const [analysisStarted, setAnalysisStarted] = useState(false);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const nextStep = () => setStep(prev => prev + 1);
+  const prevStep = () => setStep(prev => prev - 1);
+  const goToStep = (stepNumber: number) => setStep(stepNumber);
+
+  const renderStep = () => {
+    if (analysisStarted) {
+        return (
+          <div className="analysis-results">
+            <h2>Analysis Results</h2>
+            <p className="disclaimer">This is not a diagnosis. Use as input for discussion with a healthcare professional.</p>
+            <div className="result-card">
+              <div className="result-header">
+                <h3>Ehlers-Danlos Syndrome, Classical Type (ORPHA: 234)</h3>
+                <span className="match-score">94% Match</span>
+              </div>
+              <p className="result-tag">Genetic connective tissue disorder</p>
+              <div className="result-details">
+                <h4>Why this matches your case:</h4>
+                <ul>
+                  <li>You reported joint hypermobility, which is a core feature of this condition.</li>
+                  <li>Easy bruising and fragile skin are common in many classical EDS cases.</li>
+                  <li>Family history suggests an inherited pattern consistent with autosomal dominant diseases.</li>
+                </ul>
+              </div>
+            </div>
+            {/* Add more mock results as needed */}
+          </div>
+        );
+      }
+    switch (step) {
+      case 1:
+        return (
+          <div className="form-step">
+            <h2>Step 1 of 4: Patient Basics</h2>
+            <div className="form-group">
+              <label>Age</label>
+              <input type="number" name="age" value={formData.age} onChange={handleChange} placeholder="e.g., 23" />
+            </div>
+            <div className="form-group">
+              <label>Sex</label>
+              <div className="radio-group">
+                <label><input type="radio" name="sex" value="Male" onChange={handleChange} checked={formData.sex === 'Male'} /> Male</label>
+                <label><input type="radio" name="sex" value="Female" onChange={handleChange} checked={formData.sex === 'Female'} /> Female</label>
+                <label><input type="radio" name="sex" value="Intersex" onChange={handleChange} checked={formData.sex === 'Intersex'} /> Intersex</label>
+                <label><input type="radio" name="sex" value="Prefer not to say" onChange={handleChange} checked={formData.sex === 'Prefer not to say'} /> Prefer not to say</label>
+              </div>
+            </div>
+            <div className="form-group">
+              <label>Ethnicity (optional)</label>
+              <select name="ethnicity" value={formData.ethnicity} onChange={handleChange}>
+                <option value="">Select...</option>
+                <option value="South Asian">South Asian</option>
+                <option value="East Asian">East Asian</option>
+                <option value="African">African</option>
+                <option value="European">European</option>
+                <option value="Hispanic">Hispanic</option>
+                <option value="Middle Eastern">Middle Eastern</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Country/Region</label>
+              <input type="text" name="country" value={formData.country} onChange={handleChange} placeholder="e.g., United States" />
+            </div>
+          </div>
+        );
+      case 2:
+        return (
+          <div className="form-step">
+            <h2>Step 2 of 4: Symptoms Description</h2>
+            <div className="form-group">
+              <label>Describe the symptoms in your own words (as detailed as possible).</label>
+              <p className="example-text">Example: "23-year-old woman with loose joints, frequent dislocations, easily bruised skin, slow wound healing, and similar problems in her father."</p>
+              <textarea name="symptoms" value={formData.symptoms} onChange={handleChange} rows={8}></textarea>
+            </div>
+          </div>
+        );
+      case 3:
+        return (
+          <div className="form-step">
+            <h2>Step 3 of 4: Family & History</h2>
+            <div className="form-group">
+              <label>Family history of similar symptoms?</label>
+              <div className="radio-group">
+                <label><input type="radio" name="familyHistory" value="Yes" onChange={handleChange} checked={formData.familyHistory === 'Yes'} /> Yes</label>
+                <label><input type="radio" name="familyHistory" value="No" onChange={handleChange} checked={formData.familyHistory === 'No'} /> No</label>
+                <label><input type="radio" name="familyHistory" value="Unknown" onChange={handleChange} checked={formData.familyHistory === 'Unknown'} /> Unknown</label>
+              </div>
+              {formData.familyHistory === 'Yes' && (
+                <textarea name="familyHistoryDescription" value={formData.familyHistoryDescription} onChange={handleChange} placeholder="Describe who and what symptoms."></textarea>
+              )}
+            </div>
+            <div className="form-group">
+              <label>Onset of symptoms</label>
+              <select name="symptomOnset" value={formData.symptomOnset} onChange={handleChange}>
+                <option value="">Select...</option>
+                <option value="Since birth">Since birth</option>
+                <option value="Early childhood">Early childhood</option>
+                <option value="Teenage">Teenage</option>
+                <option value="Adulthood">Adulthood</option>
+                <option value="Recent (last 6 months)">Recent (last 6 months)</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Previous diagnoses or labels (if any)</label>
+              <input type="text" name="previousDiagnoses" value={formData.previousDiagnoses} onChange={handleChange} placeholder="e.g., 'ruled out lupus'" />
+            </div>
+            <div className="form-group">
+              <label>Previous tests done</label>
+              <textarea name="previousTests" value={formData.previousTests} onChange={handleChange} placeholder="e.g., MRI normal, blood tests normal"></textarea>
+            </div>
+          </div>
+        );
+      case 4:
+        return (
+          <div className="form-step">
+            <h2>Step 4 of 4: Review & Analyze</h2>
+            <div className="review-summary">
+              <div className="review-section">
+                <h3>Patient Basics <button onClick={() => goToStep(1)} className="edit-btn">Edit</button></h3>
+                <p><strong>Age:</strong> {formData.age || 'N/A'}</p>
+                <p><strong>Sex:</strong> {formData.sex || 'N/A'}</p>
+                <p><strong>Ethnicity:</strong> {formData.ethnicity || 'N/A'}</p>
+                <p><strong>Country/Region:</strong> {formData.country || 'N/A'}</p>
+              </div>
+              <div className="review-section">
+                <h3>Symptoms <button onClick={() => goToStep(2)} className="edit-btn">Edit</button></h3>
+                <p>{formData.symptoms || 'No symptoms described.'}</p>
+              </div>
+              <div className="review-section">
+                <h3>Family & History <button onClick={() => goToStep(3)} className="edit-btn">Edit</button></h3>
+                <p><strong>Family History:</strong> {formData.familyHistory || 'N/A'}</p>
+                {formData.familyHistory === 'Yes' && <p><strong>Description:</strong> {formData.familyHistoryDescription}</p>}
+                <p><strong>Symptom Onset:</strong> {formData.symptomOnset || 'N/A'}</p>
+                <p><strong>Previous Diagnoses:</strong> {formData.previousDiagnoses || 'N/A'}</p>
+                <p><strong>Previous Tests:</strong> {formData.previousTests || 'N/A'}</p>
+              </div>
+              <button className="analyze-btn" onClick={() => setAnalysisStarted(true)}>Run Rare Disease Analysis</button>
+              <p className="info-text">Takes about 3–5 seconds. We will generate a ranked list of possible rare diseases.</p>
+            </div>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
-    <div className="diagnose-container">
+    <div className="diagnose-wrapper">
       <div className="diagnose-card">
-        <h2>Start Diagnosis</h2>
-        <p>Enter patient details and symptoms.</p>
+        {!analysisStarted && (
+            <div className="progress-bar">
+                <div className={`progress-step ${step >= 1 ? 'active' : ''}`}>
+                    <div className="progress-dot">1</div>
+                    <p>Basics</p>
+                </div>
+                <div className={`progress-bar-line ${step > 1 ? 'active' : ''}`}></div>
+                <div className={`progress-step ${step >= 2 ? 'active' : ''}`}>
+                    <div className="progress-dot">2</div>
+                    <p>Symptoms</p>
+                </div>
+                <div className={`progress-bar-line ${step > 2 ? 'active' : ''}`}></div>
+                <div className={`progress-step ${step >= 3 ? 'active' : ''}`}>
+                    <div className="progress-dot">3</div>
+                    <p>History</p>
+                </div>
+                <div className={`progress-bar-line ${step > 3 ? 'active' : ''}`}></div>
+                <div className={`progress-step ${step >= 4 ? 'active' : ''}`}>
+                    <div className="progress-dot">4</div>
+                    <p>Review</p>
+                </div>
+            </div>
+        )}
 
-        <button className="primary-btn">
-          Analyze Possible Rare Diseases
-        </button>
+        {renderStep()}
+
+        {!analysisStarted && (
+            <div className="navigation-buttons">
+            {step > 1 && <button onClick={prevStep} className="btn-secondary">Back</button>}
+            {step < 4 && <button onClick={nextStep} className="btn-primary">Next</button>}
+            </div>
+        )}
       </div>
     </div>
   );
-}
+};
 
 export default Diagnose;
