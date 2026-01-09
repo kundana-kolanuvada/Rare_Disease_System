@@ -1,7 +1,5 @@
 import json
 import os
-from app.services.normalizer import normalize_hpo_ids
-
 
 """
 This file is used to find the match percentage between the user symptoms and diseases symptoms 
@@ -22,7 +20,6 @@ def jaccard_similarity(set_a, set_b):
     return len(intersection) / len(union)
 
 def match_diseases(user_hpo_ids, top_k = 5):
-    user_hpo_ids = normalize_hpo_ids(user_hpo_ids)
 
     if not user_hpo_ids:
         return []
@@ -55,7 +52,6 @@ BASE_DIR = os.path.dirname(
 DATA_PATH = os.path.join(BASE_DIR, "data", "diseases.json")
 
 DISEASES = load_diseases(DATA_PATH)
-
 
 
 
