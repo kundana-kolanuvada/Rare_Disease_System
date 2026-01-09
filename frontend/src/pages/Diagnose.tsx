@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import './Diagnose.css';
+import { runDiagnostics } from '../services/api';
+import type { DiseaseMatch } from '../services/api';
 
 const Diagnose = () => {
   const [step, setStep] = useState(1);
@@ -16,10 +18,13 @@ const Diagnose = () => {
     previousTests: '',
   });
   const [analysisStarted, setAnalysisStarted] = useState(false);
-  const [isLoading, setIsLoading] = useState(false); // New state variable
-  const [error, setError] = useState<string | null>(null); // New state variable
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [results, setResults] = useState<DiseaseMatch[] | null>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
@@ -28,58 +33,88 @@ const Diagnose = () => {
   const prevStep = () => setStep(prev => prev - 1);
   const goToStep = (stepNumber: number) => setStep(stepNumber);
 
-  const handleRunAnalysis = () => {
-    setIsLoading(true); // Set loading state
-    setError(null); // Clear previous errors
-    setAnalysisStarted(true); // Keep this for now to show the analysis section
-    // Teammate 2 will add the actual API call here
+  const handleRunAnalysis = async () => {
+    setIsLoading(true);
+    setError(null);
+    setAnalysisStarted(true);
+    setResults(null);
+
+    try {
+      const response = await runDiagnostics(formData.symptoms);
+      setResults(response);
+    } catch (err: any) {
+      setError(err.message || 'Something went wrong.');
+      setResults(null);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const renderStep = () => {
-    if (analysisStarted) { // Now analysisStarted indicates we are in the analysis flow
+    if (analysisStarted) {
       if (isLoading) {
         return (
           <div className="analysis-results">
             <h2>Analyzing case...</h2>
-            <div className="spinner"></div> {/* Placeholder for a spinner */}
+            <div className="spinner"></div>
             <p>This may take a few seconds.</p>
           </div>
         );
       }
+
       if (error) {
         return (
           <div className="analysis-results error-message">
             <h2>Error during analysis!</h2>
             <p>{error}</p>
-            <button onClick={() => { setAnalysisStarted(false); setError(null); setIsLoading(false); }} className="btn-primary">Try Again</button>
+            <button
+              onClick={() => {
+                setAnalysisStarted(false);
+                setError(null);
+                setIsLoading(false);
+              }}
+              className="btn-primary"
+            >
+              Try Again
+            </button>
           </div>
         );
       }
-      // Original mock results will be rendered here if not loading and no error,
-      // but Teammate 2 will replace this with actual results.
+
+      if (results) {
         return (
           <div className="analysis-results">
             <h2>Analysis Results</h2>
-            <p className="disclaimer">This is not a diagnosis. Use as input for discussion with a healthcare professional.</p>
-            <div className="result-card">
-              <div className="result-header">
-                <h3>Ehlers-Danlos Syndrome, Classical Type (ORPHA: 234)</h3>
-                <span className="match-score">94% Match</span>
-              </div>
-              <p className="result-tag">Genetic connective tissue disorder</p>
-              <div className="result-details">
-                <h4>Why this matches your case:</h4>
-                <ul>
-                  <li>You reported joint hypermobility, which is a core feature of this condition.</li>
-                  <li>Easy bruising and fragile skin are common in many classical EDS cases.</li>
-                  <li>Family history suggests an inherited pattern consistent with autosomal dominant diseases.</li>
-                </ul>
-              </div>
-            </div>
-            {/* Add more mock results as needed */}
+            <p className="disclaimer">
+              This is not a diagnosis. Use as input for discussion with a healthcare professional.
+            </p>
+
+            {results.length === 0 ? (
+              <p>No matching diseases found for the symptoms entered.</p>
+            ) : (
+              results.map((disease, index) => (
+                <div className="result-card" key={index}>
+                  <div className="result-header">
+                    <h3>{disease.disease_name}</h3>
+                    <span className="match-score">{disease.match_score}% Match</span>
+                  </div>
+                  <div className="result-details">
+                    <h4>Matched HPO Terms:</h4>
+                    <ul>
+                      {disease.matched_hpo_ids.map((id) => (
+                        <li key={id}>{id}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         );
       }
+    }
+
+    // Render form steps 1–4
     switch (step) {
       case 1:
         return (
@@ -202,36 +237,36 @@ const Diagnose = () => {
     <div className="diagnose-wrapper">
       <div className="diagnose-card">
         {!analysisStarted && (
-            <div className="progress-bar">
-                <div className={`progress-step ${step >= 1 ? 'active' : ''}`}>
-                    <div className="progress-dot">1</div>
-                    <p>Basics</p>
-                </div>
-                <div className={`progress-bar-line ${step > 1 ? 'active' : ''}`}></div>
-                <div className={`progress-step ${step >= 2 ? 'active' : ''}`}>
-                    <div className="progress-dot">2</div>
-                    <p>Symptoms</p>
-                </div>
-                <div className={`progress-bar-line ${step > 2 ? 'active' : ''}`}></div>
-                <div className={`progress-step ${step >= 3 ? 'active' : ''}`}>
-                    <div className="progress-dot">3</div>
-                    <p>History</p>
-                </div>
-                <div className={`progress-bar-line ${step > 3 ? 'active' : ''}`}></div>
-                <div className={`progress-step ${step >= 4 ? 'active' : ''}`}>
-                    <div className="progress-dot">4</div>
-                    <p>Review</p>
-                </div>
+          <div className="progress-bar">
+            <div className={`progress-step ${step >= 1 ? 'active' : ''}`}>
+              <div className="progress-dot">1</div>
+              <p>Basics</p>
             </div>
+            <div className={`progress-bar-line ${step > 1 ? 'active' : ''}`}></div>
+            <div className={`progress-step ${step >= 2 ? 'active' : ''}`}>
+              <div className="progress-dot">2</div>
+              <p>Symptoms</p>
+            </div>
+            <div className={`progress-bar-line ${step > 2 ? 'active' : ''}`}></div>
+            <div className={`progress-step ${step >= 3 ? 'active' : ''}`}>
+              <div className="progress-dot">3</div>
+              <p>History</p>
+            </div>
+            <div className={`progress-bar-line ${step > 3 ? 'active' : ''}`}></div>
+            <div className={`progress-step ${step >= 4 ? 'active' : ''}`}>
+              <div className="progress-dot">4</div>
+              <p>Review</p>
+            </div>
+          </div>
         )}
 
         {renderStep()}
 
         {!analysisStarted && (
-            <div className="navigation-buttons">
+          <div className="navigation-buttons">
             {step > 1 && <button onClick={prevStep} className="btn-secondary">Back</button>}
             {step < 4 && <button onClick={nextStep} className="btn-primary">Next</button>}
-            </div>
+          </div>
         )}
       </div>
     </div>
