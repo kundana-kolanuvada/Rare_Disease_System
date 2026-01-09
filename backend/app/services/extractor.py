@@ -2,7 +2,7 @@ import json
 import os
 from typing import List, Set, Dict
 
-from app.services.normalizer import normalize_hpo_ids
+from normalizer import normalize_hpo_ids
 
 """
 Extractor service:

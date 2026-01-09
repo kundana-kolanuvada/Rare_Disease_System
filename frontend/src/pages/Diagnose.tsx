@@ -16,6 +16,8 @@ const Diagnose = () => {
     previousTests: '',
   });
   const [analysisStarted, setAnalysisStarted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // New state variable
+  const [error, setError] = useState<string | null>(null); // New state variable
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -26,8 +28,35 @@ const Diagnose = () => {
   const prevStep = () => setStep(prev => prev - 1);
   const goToStep = (stepNumber: number) => setStep(stepNumber);
 
+  const handleRunAnalysis = () => {
+    setIsLoading(true); // Set loading state
+    setError(null); // Clear previous errors
+    setAnalysisStarted(true); // Keep this for now to show the analysis section
+    // Teammate 2 will add the actual API call here
+  };
+
   const renderStep = () => {
-    if (analysisStarted) {
+    if (analysisStarted) { // Now analysisStarted indicates we are in the analysis flow
+      if (isLoading) {
+        return (
+          <div className="analysis-results">
+            <h2>Analyzing case...</h2>
+            <div className="spinner"></div> {/* Placeholder for a spinner */}
+            <p>This may take a few seconds.</p>
+          </div>
+        );
+      }
+      if (error) {
+        return (
+          <div className="analysis-results error-message">
+            <h2>Error during analysis!</h2>
+            <p>{error}</p>
+            <button onClick={() => { setAnalysisStarted(false); setError(null); setIsLoading(false); }} className="btn-primary">Try Again</button>
+          </div>
+        );
+      }
+      // Original mock results will be rendered here if not loading and no error,
+      // but Teammate 2 will replace this with actual results.
         return (
           <div className="analysis-results">
             <h2>Analysis Results</h2>
@@ -159,7 +188,7 @@ const Diagnose = () => {
                 <p><strong>Previous Diagnoses:</strong> {formData.previousDiagnoses || 'N/A'}</p>
                 <p><strong>Previous Tests:</strong> {formData.previousTests || 'N/A'}</p>
               </div>
-              <button className="analyze-btn" onClick={() => setAnalysisStarted(true)}>Run Rare Disease Analysis</button>
+              <button className="analyze-btn" onClick={handleRunAnalysis}>Run Rare Disease Analysis</button>
               <p className="info-text">Takes about 3–5 seconds. We will generate a ranked list of possible rare diseases.</p>
             </div>
           </div>
