@@ -1,12 +1,11 @@
 import { Link } from "react-router-dom";
 import "./Navbar.css";
 
-function Navbar() {
+const Navbar: React.FC = () => {
   return (
     <nav className="navbar">
       <div className="logo">
         <img src="/logo.png" alt="AtlasDx Logo" />
-        <span>AtlasDx - Rare Disease Diagnostic System</span>
       </div>
 
       <div className="nav-links">
@@ -16,6 +15,6 @@ function Navbar() {
       </div>
     </nav>
   );
-}
+};
 
 export default Navbar;
