@@ -4,57 +4,53 @@ This plan divides the tasks for Phase 3, "Refinement and Advanced Matching", int
 
 ---
 
-### **Part 1: Teammate 1 - Embedding Generation & ChromaDB Setup**
+### **Part 1: Teammate 1 - Embedding Infrastructure & Data Pipeline**
 
-This role focuses on setting up the vector database and populating it with disease symptom embeddings.
+This role focuses on creating the core embedding service and using it to build the disease vector database.
 
 *   **1. Backend: Set up ChromaDB and install embedding model dependencies.**
-    *   **Goal:** Prepare the backend environment for generating and storing vector embeddings.
-    *   **Implementation:**
-        1.  Add `chromadb` and `sentence-transformers` (for generating embeddings) to `backend/requirements.txt`.
-        2.  Run `pip install -r backend/requirements.txt` in the backend virtual environment to install these new dependencies.
+    *   **Goal:** Prepare the environment for vector embeddings.
+    *   **Implementation:** Add `chromadb` and `sentence-transformers` to `backend/requirements.txt` and install them.
 
-*   **2. Backend: Create a script to generate and store disease embeddings in ChromaDB.**
-    *   **File to Create:** `scripts/generate_embeddings.py`
-    *   **Goal:** Process the `diseases.json` data, generate vector embeddings for each disease's symptoms, and load them into a ChromaDB collection.
+*   **2. Backend: Create a reusable Embedding Service.**
+    *   **File to Create:** `backend/app/services/embedding_service.py`
+    *   **Goal:** Create a centralized service for generating text embeddings that can be used by other parts of the application.
     *   **Implementation:**
-        1.  Load the `diseases.json` file.
-        2.  Initialize an embedding model, for example, `SentenceTransformer('all-MiniLM-L6-v2')` as a lightweight option to start.
-        3.  For each disease entry:
-            *   Extract and combine its symptom names (e.g., from `hpo_terms`) into a single text string.
-            *   Generate an embedding (vector) for this symptom string using the initialized model.
-            *   Store the embedding, the disease's `orphacode` (as ID), and relevant metadata (like disease name, symptoms) in a ChromaDB collection.
+        1.  Initialize the embedding model (e.g., `SentenceTransformer('all-MiniLM-L6-v2')`) in this file so it's loaded only once.
+        2.  Create a function `generate_embedding(text: str) -> List[float]` that takes a string and returns its vector embedding.
+
+*   **3. Backend: Create the script to populate ChromaDB.**
+    *   **File to Create:** `scripts/generate_embeddings.py`
+    *   **Goal:** Use the new `embedding_service` to process `diseases.json` and load the embeddings into ChromaDB.
+    *   **Implementation:**
+        1.  Import the `generate_embedding` function from the `embedding_service`.
+        2.  For each disease, call this function to generate its symptom embedding and store it in a ChromaDB collection.
 
 ---
 
-### **Part 2: Teammate 2 - Advanced Matching Integration & API Update**
+### **Part 2: Teammate 2 - Advanced Matching API Integration**
 
-This role focuses on integrating the new ChromaDB-based matching into the existing backend API and verifying frontend compatibility.
+This role focuses on using the new embedding infrastructure to upgrade the live API endpoint.
 
-*   **3. Backend: Upgrade the Disease Matcher service to use ChromaDB.**
+*   **4. Backend: Upgrade the Disease Matcher service to use ChromaDB.**
     *   **File to Modify:** `backend/app/services/matcher.py`
-    *   **Goal:** Replace the current keyword-based matching logic with a vector similarity search using the ChromaDB collection populated by Teammate 1.
+    *   **Goal:** Replace the current keyword-based matching with a vector similarity search.
     *   **Implementation:**
-        1.  Modify the `match_diseases` function:
-            *   Initialize and connect to the ChromaDB collection (ensuring it's populated from `generate_embeddings.py`).
-            *   Take the user's input symptoms (which will still be HPO IDs from the `extractor`, but can be translated back to text or have an embedding generated for the query).
-            *   Generate an embedding for the user's input symptoms.
-            *   Query the ChromaDB collection using this user embedding to find the `top_k` most similar disease vectors.
-            *   Retrieve the associated disease information (name, `orphacode`) from ChromaDB's metadata.
-            *   Calculate a `match_score` based on the similarity distance returned by ChromaDB (e.g., cosine similarity).
-            *   Return the ranked list of `DiseaseMatch` objects.
+        1.  Import the `generate_embedding` function from the `embedding_service` (created by Teammate 1).
+        2.  Modify the `match_diseases` function to:
+            *   Take the user's symptom text.
+            *   Call `generate_embedding` to get the vector for the user's text.
+            *   Query the ChromaDB collection with this vector to find the most similar diseases.
+            *   Process the results and return the ranked list.
 
-*   **4. Backend: Update the API endpoint to utilize the advanced matcher.**
-    *   **File to Modify:** `backend/app/api/routes.py`
-    *   **Goal:** Ensure the `/api/v1/diagnose` endpoint correctly uses the upgraded `matcher.py` with its new vector-based logic.
-    *   **Implementation:**
-        1.  Review the `diagnose_endpoint` in `routes.py`. If the `match_diseases` function's signature was changed significantly (e.g., now taking raw text instead of HPO IDs directly), update the endpoint call accordingly. Otherwise, simply ensure it continues to pass the necessary arguments (like extracted HPO IDs or the raw symptom text) to the new matcher.
+*   **5. Backend: Update the API endpoint to utilize the advanced matcher.**
+    *   **Files to Modify:** `backend/app/api/routes.py`
+    *   **Goal:** Ensure the API endpoint correctly uses the upgraded matcher.
+    *   **Implementation:** Adjust the `diagnose_endpoint` in `routes.py` to pass the raw symptom text to the new `match_diseases` function.
 
-*   **5. Frontend: Verify compatibility and display of advanced matching results.**
-    *   **File to Modify:** `frontend/src/pages/Diagnose.tsx` and `frontend/src/services/api.ts` (if `DiseaseMatch` schema changes).
-    *   **Goal:** Confirm that the existing frontend UI can handle and correctly display the output from the new advanced matching engine.
-    *   **Implementation:**
-        1.  Review the `DiseaseMatch` Pydantic model (`backend/app/models/schemas.py`) and its corresponding TypeScript interface (`frontend/src/services/api.ts`). If the new matching logic introduces new fields or changes the meaning of existing ones, update these schemas.
-        2.  Verify that `frontend/src/pages/Diagnose.tsx` correctly renders the `match_score`, disease names, and any other relevant information from the API response. No significant UI changes are expected unless the `DiseaseMatch` structure was explicitly altered.
+*   **6. Frontend: Verify compatibility and display of advanced matching results.**
+    *   **Files to Modify:** `frontend/src/pages/Diagnose.tsx` (if needed).
+    *   **Goal:** Ensure the frontend can display the results from the new advanced matching.
+    *   **Implementation:** Verify that the frontend UI still displays the results correctly, making minor adjustments if any new fields are introduced in the `DiseaseMatch` schema.
 
 ---
