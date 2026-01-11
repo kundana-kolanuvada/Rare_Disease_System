@@ -1,73 +1,60 @@
-# Phase 2: Core MVP Development - Work Breakdown
+# Phase 3: Refinement and Advanced Matching - Work Breakdown
 
-This document divides the tasks for Phase 2, "Core MVP Development", into two balanced roles for a collaborative effort, with each teammate working on both frontend and backend components.
-
----
-
-### **Part 1: Teammate 1 - Data Extraction & Frontend Service**
-
-This role focuses on the core data transformation logic (extracting symptoms from text) and setting up the frontend infrastructure to handle the API communication state.
-
-*   **1. Backend: Implement the HPO Symptom Extractor (Agent 1)**
-    *   **File to Create/Modify:** `backend/app/services/extractor.py`
-    *   **Goal:** Create a service that turns raw user text into a list of HPO IDs.
-    *   **Implementation:**
-        1.  Load `diseases.json` (located at `backend/data/diseases.json`) once when the module starts.
-        2.  Create a dictionary that maps lowercase HPO symptom names to HPO IDs (e.g., `"joint hypermobility"` -> `"HP:0001382"`).
-        3.  Create a function `extract_hpo_ids_from_text(text: str) -> List[str]`.
-        4.  This function will take a string, convert it to lowercase, and find all known symptom names within it, collecting the corresponding HPO IDs.
-        5.  Use the `normalize_hpo_ids` function from `backend/app/services/normalizer.py` to return a clean and unique list of HPO IDs.
-
-*   **2. Frontend: Create the API service module**
-    *   **File to Create:** `frontend/src/services/api.ts`
-    *   **Goal:** Define the frontend "contract" for calling the backend.
-    *   **Implementation:**
-        1.  Using `axios`, create an asynchronous function `runDiagnostics(symptomsText: string)`.
-        2.  This function will be responsible for making a `POST` request to the backend. Teammate 2 will build the endpoint, but you can assume it will be at `/api/v1/diagnose`.
-        3.  The function should take the symptom text, send it in a JSON body (e.g., `{ "text": symptomsText }`), and be prepared to return the backend's response data.
-
-*   **3. Frontend: Add loading and error state management**
-    *   **File to Modify:** `frontend/src/pages/Diagnose.tsx`
-    *   **Goal:** Prepare the UI to give users feedback during API calls.
-    *   **Implementation:**
-        1.  Add new state variables to the component: `isLoading` (boolean) and `error` (string or null).
-        2.  In the JSX, add conditional logic:
-            *   If `isLoading` is `true`, show a loading indicator.
-            *   If `error` is not null, display a user-friendly error message.
-        3.  The actual logic to set these states will be implemented by Teammate 2 when they connect the UI to the service you built.
+This plan divides the tasks for Phase 3, "Refinement and Advanced Matching", into two balanced roles for a collaborative effort, focusing on integrating a vector database (ChromaDB) for improved disease matching.
 
 ---
 
-### **Part 2: Teammate 2 - API Routing & Results Display**
+### **Part 1: Teammate 1 - Embedding Generation & ChromaDB Setup**
 
-This role focuses on wiring together the backend services into a usable endpoint and connecting the frontend UI to it to display the final results.
+This role focuses on setting up the vector database and populating it with disease symptom embeddings.
 
-*   **4. Backend: Create the API endpoints and data schemas**
-    *   **Files to Modify:** `backend/app/api/routes.py` and `backend/app/models/schemas.py`.
-    *   **Goal:** Create the live API route that the frontend will call.
+*   **1. Backend: Set up ChromaDB and install embedding model dependencies.**
+    *   **Goal:** Prepare the backend environment for generating and storing vector embeddings.
     *   **Implementation:**
-        1.  In `schemas.py`, define Pydantic models for the API request (`SymptomRequest`) and response bodies. For example, the request model for `/api/v1/diagnose` will expect a `text: str`. The response model should align with the output of `matcher.py`.
-        2.  In `routes.py`, create a `POST` endpoint `/api/v1/diagnose`.
-        3.  This endpoint will use the `extract_hpo_ids_from_text` function (from Teammate 1's work) and the existing `match_diseases` function from `backend/app/services/matcher.py` to process the request and generate results.
-        4.  Wire these services together: the endpoint function will take the request, call the extractor, then call the matcher with the extractor's output, and return the final list.
+        1.  Add `chromadb` and `sentence-transformers` (for generating embeddings) to `backend/requirements.txt`.
+        2.  Run `pip install -r backend/requirements.txt` in the backend virtual environment to install these new dependencies.
 
-*   **5. Frontend: Connect the UI to the API service**
-    *   **File to Modify:** `frontend/src/pages/Diagnose.tsx`
-    *   **Goal:** Make the "Run Analysis" button trigger a real API call.
+*   **2. Backend: Create a script to generate and store disease embeddings in ChromaDB.**
+    *   **File to Create:** `scripts/generate_embeddings.py`
+    *   **Goal:** Process the `diseases.json` data, generate vector embeddings for each disease's symptoms, and load them into a ChromaDB collection.
     *   **Implementation:**
-        1.  Import the `runDiagnostics` function from the `api.ts` service (created by Teammate 1).
-        2.  Find the handler function for the "Run Rare Disease Analysis" button.
-        3.  Inside it, call `runDiagnostics` and handle the asynchronous response. Set the `isLoading` and `error` states (prepared by Teammate 1) appropriately before and after the call.
-        4.  On a successful response, store the list of diseases in a new `results` state variable.
+        1.  Load the `diseases.json` file.
+        2.  Initialize an embedding model, for example, `SentenceTransformer('all-MiniLM-L6-v2')` as a lightweight option to start.
+        3.  For each disease entry:
+            *   Extract and combine its symptom names (e.g., from `hpo_terms`) into a single text string.
+            *   Generate an embedding (vector) for this symptom string using the initialized model.
+            *   Store the embedding, the disease's `orphacode` (as ID), and relevant metadata (like disease name, symptoms) in a ChromaDB collection.
 
-*   **6. Frontend: Implement dynamic rendering of disease match results**
-    *   **File to Modify:** `frontend/src/pages/Diagnose.tsx`
-    *   **Goal:** Show the actual data from the backend instead of the mock-up.
+---
+
+### **Part 2: Teammate 2 - Advanced Matching Integration & API Update**
+
+This role focuses on integrating the new ChromaDB-based matching into the existing backend API and verifying frontend compatibility.
+
+*   **3. Backend: Upgrade the Disease Matcher service to use ChromaDB.**
+    *   **File to Modify:** `backend/app/services/matcher.py`
+    *   **Goal:** Replace the current keyword-based matching logic with a vector similarity search using the ChromaDB collection populated by Teammate 1.
     *   **Implementation:**
-        1.  In the JSX, find the hardcoded result card in the "Analysis Results" section.
-        2.  Replace it with logic to map over the `results` state array. For each disease in the array, render a `result-card` component, populating it with the real name, score, and other details from the API response.
+        1.  Modify the `match_diseases` function:
+            *   Initialize and connect to the ChromaDB collection (ensuring it's populated from `generate_embeddings.py`).
+            *   Take the user's input symptoms (which will still be HPO IDs from the `extractor`, but can be translated back to text or have an embedding generated for the query).
+            *   Generate an embedding for the user's input symptoms.
+            *   Query the ChromaDB collection using this user embedding to find the `top_k` most similar disease vectors.
+            *   Retrieve the associated disease information (name, `orphacode`) from ChromaDB's metadata.
+            *   Calculate a `match_score` based on the similarity distance returned by ChromaDB (e.g., cosine similarity).
+            *   Return the ranked list of `DiseaseMatch` objects.
 
-*   **7. Backend: Test the complete end-to-end backend endpoint**
-    *   **Method:** Use FastAPI's `/docs` page or a tool like `curl`.
-    *   **Goal:** As the person building the endpoint, ensure it works as expected before the frontend fully depends on it.
-    *   **Implementation:** Send test requests with sample symptom descriptions and verify that the endpoint returns the expected JSON structure with a ranked list of diseases. This helps ensure a smooth integration with the frontend.
+*   **4. Backend: Update the API endpoint to utilize the advanced matcher.**
+    *   **File to Modify:** `backend/app/api/routes.py`
+    *   **Goal:** Ensure the `/api/v1/diagnose` endpoint correctly uses the upgraded `matcher.py` with its new vector-based logic.
+    *   **Implementation:**
+        1.  Review the `diagnose_endpoint` in `routes.py`. If the `match_diseases` function's signature was changed significantly (e.g., now taking raw text instead of HPO IDs directly), update the endpoint call accordingly. Otherwise, simply ensure it continues to pass the necessary arguments (like extracted HPO IDs or the raw symptom text) to the new matcher.
+
+*   **5. Frontend: Verify compatibility and display of advanced matching results.**
+    *   **File to Modify:** `frontend/src/pages/Diagnose.tsx` and `frontend/src/services/api.ts` (if `DiseaseMatch` schema changes).
+    *   **Goal:** Confirm that the existing frontend UI can handle and correctly display the output from the new advanced matching engine.
+    *   **Implementation:**
+        1.  Review the `DiseaseMatch` Pydantic model (`backend/app/models/schemas.py`) and its corresponding TypeScript interface (`frontend/src/services/api.ts`). If the new matching logic introduces new fields or changes the meaning of existing ones, update these schemas.
+        2.  Verify that `frontend/src/pages/Diagnose.tsx` correctly renders the `match_score`, disease names, and any other relevant information from the API response. No significant UI changes are expected unless the `DiseaseMatch` structure was explicitly altered.
+
+---

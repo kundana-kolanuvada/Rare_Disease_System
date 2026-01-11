@@ -133,7 +133,7 @@ const Diagnose = () => {
                 <div className="result-card" key={index}>
                   <div className="result-header">
                     <h3>{disease.disease_name}</h3>
-                    <span className="match-score">{disease.match_score}% Match</span>
+                    <span className="match-score">{ (disease.match_score * 100).toFixed(1) }% Match</span>
                   </div>
                   <div className="result-details">
                     <h4>Matched HPO Terms:</h4>
