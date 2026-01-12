@@ -6,5 +6,8 @@ backend/.venv
 #raw_data
 backend/data/raw/
 
+#chroma database
+chroma_db/
+
 
 learning_logs/
