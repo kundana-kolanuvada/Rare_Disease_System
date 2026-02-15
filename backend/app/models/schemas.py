@@ -26,8 +26,12 @@ class MatchRequest(BaseModel):
     hpo_ids: List[str]
     top_k: int = 5
 
+class MatchedTerm(BaseModel):
+    hpo_id: str
+    hpo_name: str
+
 class DiseaseMatch(BaseModel):
     disease_name: str
     match_score: float
-    matched_hpo_ids: List[str]
+    matched_terms: List[MatchedTerm]
  
