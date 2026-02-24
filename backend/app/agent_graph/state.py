@@ -1,4 +1,4 @@
-from typing import TypedDict, List
+from typing import TypedDict, List, Optional
 from app.models.schemas import DiseaseMatch
 
 class AgentState(TypedDict):
