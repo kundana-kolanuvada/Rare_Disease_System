@@ -15,22 +15,40 @@ export interface DiseaseMatch {
   matched_hpo_ids: string[];
 }
 
+interface DiagnosisRequest {
+  age: string;
+  sex: string;
+  ethnicity: string;
+  country: string;
+  symptoms: string;
+  familyHistory: string;
+  familyHistoryDescription: string;
+  symptomOnset: string;
+  previousDiagnoses: string;
+  previousTests: string;
+}
+
 /**
- * Sends symptom text to backend for disease matching
+ * Sends symptom text and demographic data to backend for disease matching
  */
 export const runDiagnostics = async (
-  symptomsText: string
+  formData: DiagnosisRequest
 ): Promise<DiseaseMatch[]> => {
   try {
-    const response = await axios.post<DiseaseMatch[]>(
+    const response = await axios.post<any[]>(
       `${API_BASE_URL}/diagnose`,
       {
-        text: symptomsText,
+        ...formData,
         top_k: 5,
       }
     );
 
-    return response.data;
+    // Transform backend MatchedTerm objects to string array of names for the UI
+    return response.data.map(disease => ({
+      disease_name: disease.disease_name,
+      match_score: disease.match_score,
+      matched_hpo_ids: disease.matched_terms.map((term: any) => term.hpo_name)
+    }));
   } catch (error) {
     if (axios.isAxiosError(error)) {
       console.error(

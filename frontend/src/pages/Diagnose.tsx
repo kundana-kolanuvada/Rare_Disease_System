@@ -77,7 +77,7 @@ const Diagnose = () => {
     setResults(null);
 
     try {
-      const response = await runDiagnostics(formData.symptoms);
+      const response = await runDiagnostics(formData);
       setResults(response);
     } catch (err: any) {
       setError(err.message || 'Something went wrong.');
