@@ -1,4 +1,4 @@
-from pydantic import BaseModel,Field
+from pydantic import BaseModel, Field
 from typing import List, Optional
 
 class SymptomRequest(BaseModel):
@@ -34,4 +34,10 @@ class DiseaseMatch(BaseModel):
     disease_name: str
     match_score: float
     matched_terms: List[MatchedTerm]
- 
+    
+    # Optional clinical metadata fields
+    orpha_code: Optional[str] = None
+    onset: Optional[str] = None
+    inheritance: Optional[str] = None
+    prevalence: Optional[str] = None
+    genes: Optional[str] = None
