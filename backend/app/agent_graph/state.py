@@ -7,6 +7,7 @@ class AgentState(TypedDict):
     """
     # Inputs from the user
     symptoms: str
+    main_symptoms: Optional[str]
     top_k: int
     age: Optional[int]
     sex: Optional[str]
@@ -14,10 +15,15 @@ class AgentState(TypedDict):
     country: Optional[str]
     family_history: Optional[str]
     family_history_description: Optional[str]
+    consanguinity: Optional[str]
     symptom_onset: Optional[str]
+    genetic_testing: Optional[str]
     previous_diagnoses: Optional[str]
     previous_tests: Optional[str]
 
     # Agent-generated data
     structured_symptoms: List[str]
     matched_diseases: List[DiseaseMatch]
+    
+    # Final refined results
+    refined_diseases: List[DiseaseMatch]
