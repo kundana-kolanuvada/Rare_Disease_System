@@ -26,7 +26,7 @@ collection = chroma_client.get_or_create_collection(name="diseases")
 
 def match_diseases(
     symptom_text: str,
-    top_k: int = 5
+    top_k: int = 25
 ) -> List[Dict]:
     """
     Performs vector search and returns disease matches using metadata stored in ChromaDB.
@@ -72,10 +72,13 @@ def match_diseases(
             "match_score": round(1 - results["distances"][0][i], 4),
             "matched_terms": matched_terms_structured,
             "orpha_code": metadata.get("orpha_code"),
+            # clinical metadata
             "onset": metadata.get("onset"),
             "inheritance": metadata.get("inheritance"),
             "prevalence": metadata.get("prevalence"),
-            "genes": metadata.get("genes")
+            "genes": metadata.get("genes"),
+            # future scoring support
+            "symptom_weights": metadata.get("symptom_weights", {})
         })
 
     return matches

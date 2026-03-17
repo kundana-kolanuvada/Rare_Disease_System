@@ -4,7 +4,7 @@ from app.models.schemas import DiseaseMatch
 from typing import List
 
 @tool
-def disease_vector_search_tool(symptom_text: str, top_k: int = 5) -> List[DiseaseMatch]:
+def disease_vector_search_tool(symptom_text: str, top_k: int = 25) -> List[DiseaseMatch]:
     """
     Performs a vector-based similarity search to find rare diseases matching the provided symptom text.
 
