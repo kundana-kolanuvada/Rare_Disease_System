@@ -28,7 +28,7 @@ def disease_search_node(state: AgentState):
     else:
         symptoms_to_search = state["symptoms"]
         
-    top_k = state.get("top_k", 5)
+    top_k = 25
 
     results = disease_vector_search_tool.invoke({
         "symptom_text": symptoms_to_search,
@@ -36,7 +36,7 @@ def disease_search_node(state: AgentState):
     })
 
     return {
-        "matched_diseases": results
+        "matches": results
     }
 
 def clinical_refinement_node(state: AgentState):
@@ -67,11 +67,13 @@ def build_graph():
     # Add nodes
     workflow.add_node("extract_symptoms", symptom_extraction_node)
     workflow.add_node("disease_search", disease_search_node)
+    workflow.add_node("clinical_refiner", clinical_refinement_node)
     
     # Set edges
     workflow.set_entry_point("extract_symptoms")
     workflow.add_edge("extract_symptoms", "disease_search")
-    workflow.add_edge("disease_search", END)
+    workflow.add_edge("disease_search", "clinical_refiner")
+    workflow.add_edge("clinical_refiner", END)
     
     return workflow.compile()
 
