@@ -1,11 +1,7 @@
 from typing import TypedDict, List, Optional
 from app.models.schemas import DiseaseMatch
 
-class AgentState(TypedDict):
-    """
-    Represents the state of our agent. It's a dictionary that will be passed between nodes in the graph.
-    """
-    # Inputs from the user
+class AgentState(TypedDict, total=False):
     symptoms: str
     main_symptoms: Optional[str]
     top_k: int
@@ -21,9 +17,9 @@ class AgentState(TypedDict):
     previous_diagnoses: Optional[str]
     previous_tests: Optional[str]
 
-    # Agent-generated data
+    # Agent-generated
     structured_symptoms: List[str]
-    matched_diseases: List[DiseaseMatch]
-    
-    # Final refined results
-    refined_diseases: List[DiseaseMatch]
+    matches: List[DiseaseMatch]         
+
+    # Final output
+    final_matches: List[DiseaseMatch] 
