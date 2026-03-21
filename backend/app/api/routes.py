@@ -28,5 +28,5 @@ def diagnose_endpoint(request: SymptomRequest):
         "previous_tests": request.previous_tests
     })
 
-    # Return the refined diseases if they exist, otherwise fallback to matched_diseases
-    return result.get("refined_diseases") or result.get("matched_diseases") or []
+    # Return the refined diseases if they exist, otherwise fallback to matches
+    return result.get("final_matches") or result.get("matches") or []
