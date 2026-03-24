@@ -5,47 +5,37 @@ from app.services.extractor import extract_structured_symptoms_rag
 from app.services.clinical_scorer import refine_matches
 
 
-def symptom_extraction_node(state: AgentState):
+def symptom_analysis_agent(state: AgentState):
     """
-    Node to extract structured symptoms from raw text.
+    Agent that handles symptom understanding + disease matching.
     """
+
     raw_symptoms = state["symptoms"]
-    structured_symptoms = extract_structured_symptoms_rag(raw_symptoms)
-    
-    return {
-        "structured_symptoms": structured_symptoms
-    }
+    structured = extract_structured_symptoms_rag(raw_symptoms)
 
-
-def disease_search_node(state: AgentState):
-    """
-    Node to search for diseases based on extracted symptoms.
-    """
-    # Use structured symptoms if available, otherwise fallback to raw text
-    structured = state.get("structured_symptoms", [])
     if structured:
         symptoms_to_search = ", ".join(structured)
     else:
-        symptoms_to_search = state["symptoms"]
-        
-    top_k = 25
+        symptoms_to_search = raw_symptoms
 
     results = disease_vector_search_tool.invoke({
         "symptom_text": symptoms_to_search,
-        "top_k": top_k
+        "top_k": 25
     })
 
     return {
+        "structured_symptoms": structured,
         "matches": results
     }
 
-def clinical_refinement_node(state: AgentState):
+
+def clinical_reasoning_agent(state: AgentState):
     """
-    Refines top 25 disease matches into final top 5
-    using clinical scoring.
+    Agent that refines results using clinical metadata.
     """
 
     matches = state.get("matches", [])
+
     final_matches = refine_matches(
         matches=matches,
         age=state.get("age"),
@@ -57,24 +47,51 @@ def clinical_refinement_node(state: AgentState):
         main_symptoms=state.get("symptoms"),
         top_k=5
     )
+
     return {
         "final_matches": final_matches
     }
 
+
+def supervisor_agent(state: AgentState):
+    """
+    Decides which agent to call next.
+    """
+
+    # If no matches yet → go to symptom agent
+    if not state.get("matches"):
+        return "symptom_agent"
+
+    # If matches exist but no final results → go to clinical agent
+    if state.get("matches") and not state.get("final_matches"):
+        return "clinical_agent"
+
+    return "end"
+
+
 def build_graph():
     workflow = StateGraph(AgentState)
-    
-    # Add nodes
-    workflow.add_node("extract_symptoms", symptom_extraction_node)
-    workflow.add_node("disease_search", disease_search_node)
-    workflow.add_node("clinical_refiner", clinical_refinement_node)
-    
-    # Set edges
-    workflow.set_entry_point("extract_symptoms")
-    workflow.add_edge("extract_symptoms", "disease_search")
-    workflow.add_edge("disease_search", "clinical_refiner")
-    workflow.add_edge("clinical_refiner", END)
-    
+
+    # Add agents
+    workflow.add_node("symptom_agent", symptom_analysis_agent)
+    workflow.add_node("clinical_agent", clinical_reasoning_agent)
+
+    # Entry point
+    workflow.set_entry_point("symptom_agent")
+
+    # After symptom agent → decide next
+    workflow.add_conditional_edges(
+        "symptom_agent",
+        supervisor_agent,
+        {
+            "clinical_agent": "clinical_agent",
+            "end": END
+        }
+    )
+
+    # After clinical agent → end
+    workflow.add_edge("clinical_agent", END)
+
     return workflow.compile()
 
 
