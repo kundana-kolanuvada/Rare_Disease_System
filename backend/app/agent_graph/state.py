@@ -5,10 +5,12 @@ class AgentState(TypedDict, total=False):
     symptoms: str
     main_symptoms: Optional[str]
     top_k: int
+
     age: Optional[int]
     sex: Optional[str]
     ethnicity: Optional[str]
     country: Optional[str]
+
     family_history: Optional[str]
     family_history_description: Optional[str]
     consanguinity: Optional[str]
@@ -17,9 +19,10 @@ class AgentState(TypedDict, total=False):
     previous_diagnoses: Optional[str]
     previous_tests: Optional[str]
 
-    # Agent-generated
+    # Agent outputs
     structured_symptoms: List[str]
-    matches: List[DiseaseMatch]         
+    matches: List[DiseaseMatch]
+    final_matches: List[DiseaseMatch]
 
-    # Final output
-    final_matches: List[DiseaseMatch] 
+    # Supervisor control
+    next_step: str

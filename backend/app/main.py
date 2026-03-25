@@ -1,6 +1,9 @@
 from fastapi import FastAPI
 from app.api.routes import router
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
 app = FastAPI(
     title="Rare Disease Diagnostic Assistant",
     description="MVP disease matching using HPO terms",

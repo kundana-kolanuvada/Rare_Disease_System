@@ -3,14 +3,13 @@ from app.agent_graph.state import AgentState
 from app.agent_graph.tools import disease_vector_search_tool
 from app.services.extractor import extract_structured_symptoms_rag
 from app.services.clinical_scorer import refine_matches
+from app.agent_graph.llm import get_llm
 
+llm = get_llm()
 
 def symptom_analysis_agent(state: AgentState):
-    """
-    Agent that handles symptom understanding + disease matching.
-    """
-
     raw_symptoms = state["symptoms"]
+
     structured = extract_structured_symptoms_rag(raw_symptoms)
 
     if structured:
@@ -23,17 +22,11 @@ def symptom_analysis_agent(state: AgentState):
         "top_k": 25
     })
 
-    return {
-        "structured_symptoms": structured,
-        "matches": results
-    }
-
+    state["structured_symptoms"] = structured
+    state["matches"] = results
+    return state
 
 def clinical_reasoning_agent(state: AgentState):
-    """
-    Agent that refines results using clinical metadata.
-    """
-
     matches = state.get("matches", [])
 
     final_matches = refine_matches(
@@ -48,48 +41,65 @@ def clinical_reasoning_agent(state: AgentState):
         top_k=5
     )
 
-    return {
-        "final_matches": final_matches
-    }
-
+    state["final_matches"] = final_matches
+    return state
 
 def supervisor_agent(state: AgentState):
-    """
-    Decides which agent to call next.
-    """
 
-    # If no matches yet → go to symptom agent
-    if not state.get("matches"):
-        return "symptom_agent"
+    prompt = f"""
+You are a medical workflow supervisor.
 
-    # If matches exist but no final results → go to clinical agent
-    if state.get("matches") and not state.get("final_matches"):
-        return "clinical_agent"
+Decide which agent to call next.
 
-    return "end"
+Available:
+- symptom_agent → if symptoms need processing
+- clinical_agent → if matches exist but need refinement
+- end → if final results ready
 
+Rules:
+- If no matches → symptom_agent
+- If matches exist but no final_matches → clinical_agent
+- If final_matches exist → end
+
+State:
+{state}
+
+Return ONLY one word:
+symptom_agent
+clinical_agent
+end
+"""
+
+    decision = llm.invoke(prompt).content.strip().lower()
+
+    return {
+        "next_step": decision
+    }
 
 def build_graph():
     workflow = StateGraph(AgentState)
 
-    # Add agents
+    # Nodes
+    workflow.add_node("supervisor", supervisor_agent)
     workflow.add_node("symptom_agent", symptom_analysis_agent)
     workflow.add_node("clinical_agent", clinical_reasoning_agent)
 
-    # Entry point
-    workflow.set_entry_point("symptom_agent")
+    # Entry
+    workflow.set_entry_point("supervisor")
 
-    # After symptom agent → decide next
+    # Conditional routing
     workflow.add_conditional_edges(
-        "symptom_agent",
-        supervisor_agent,
+        "supervisor",
+        lambda state: state["next_step"],
         {
+            "symptom_agent": "symptom_agent",
             "clinical_agent": "clinical_agent",
             "end": END
         }
     )
 
-    # After clinical agent → end
+    # Flow
+    workflow.add_edge("symptom_agent", "supervisor")
     workflow.add_edge("clinical_agent", END)
 
     return workflow.compile()
