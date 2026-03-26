@@ -1,108 +1,41 @@
-from langgraph.graph import StateGraph, END
-from app.agent_graph.state import AgentState
-from app.agent_graph.tools import disease_vector_search_tool
-from app.services.extractor import extract_structured_symptoms_rag
-from app.services.clinical_scorer import refine_matches
+from langchain.agents import create_agent
+from app.agent_graph.agent_tools import call_symptom_agent, call_clinical_reasoning_agent
 from app.agent_graph.llm import get_llm
+from langchain_core.messages import HumanMessage
 
 llm = get_llm()
 
-def symptom_analysis_agent(state: AgentState):
-    raw_symptoms = state["symptoms"]
+# --- Main Agent: The Supervisor ---
+# Created with create_agent and using the subagent tools.
+atlas_dx_supervisor = create_agent(
+    model=llm,
+    tools=[call_symptom_agent, call_clinical_reasoning_agent],
+    system_prompt="""You are the Lead Diagnostic Supervisor for Atlas Dx.
+    Your mission is to find the most likely rare disease diagnosis.
+    
+    STEP-BY-STEP WORKFLOW:
+    1. Call 'call_symptom_agent' with the patient's symptoms to get 25 initial matches.
+    2. Call 'call_clinical_reasoning_agent' with those matches and the patient's history.
+    3. Present the final diagnosis clearly in a professional medical report format.
+    
+    Synchronous Operation: Wait for the result of the first agent before calling the next one."""
+)
 
-    structured = extract_structured_symptoms_rag(raw_symptoms)
-
-    if structured:
-        symptoms_to_search = ", ".join(structured)
-    else:
-        symptoms_to_search = raw_symptoms
-
-    results = disease_vector_search_tool.invoke({
-        "symptom_text": symptoms_to_search,
-        "top_k": 25
+def invoke_atlas_dx(input_data: dict):
+    # Combine patient info for the supervisor
+    patient_description = f"""
+    Symptoms: {input_data.get('symptoms')}
+    Demographics: Age {input_data.get('age')}, Sex {input_data.get('sex')}
+    History: Onset {input_data.get('symptom_onset')}, Family History {input_data.get('family_history')}, 
+    Consanguinity {input_data.get('consanguinity')}, Genetic testing {input_data.get('genetic_testing')}
+    """
+    
+    # We call .invoke() on the supervisor agent
+    response = atlas_dx_supervisor.invoke({
+        "messages": [HumanMessage(content=patient_description)]
     })
-
-    state["structured_symptoms"] = structured
-    state["matches"] = results
-    return state
-
-def clinical_reasoning_agent(state: AgentState):
-    matches = state.get("matches", [])
-
-    final_matches = refine_matches(
-        matches=matches,
-        age=state.get("age"),
-        sex=state.get("sex"),
-        family_history=state.get("family_history"),
-        consanguinity=state.get("consanguinity"),
-        symptom_onset=state.get("symptom_onset"),
-        genetic_testing=state.get("genetic_testing"),
-        main_symptoms=state.get("symptoms"),
-        top_k=5
-    )
-
-    state["final_matches"] = final_matches
-    return state
-
-def supervisor_agent(state: AgentState):
-
-    prompt = f"""
-You are a medical workflow supervisor.
-
-Decide which agent to call next.
-
-Available:
-- symptom_agent → if symptoms need processing
-- clinical_agent → if matches exist but need refinement
-- end → if final results ready
-
-Rules:
-- If no matches → symptom_agent
-- If matches exist but no final_matches → clinical_agent
-- If final_matches exist → end
-
-State:
-{state}
-
-Return ONLY one word:
-symptom_agent
-clinical_agent
-end
-"""
-
-    decision = llm.invoke(prompt).content.strip().lower()
-
+    
+    # Get the last message from the result
     return {
-        "next_step": decision
+        "final_matches_text": response["messages"][-1].content
     }
-
-def build_graph():
-    workflow = StateGraph(AgentState)
-
-    # Nodes
-    workflow.add_node("supervisor", supervisor_agent)
-    workflow.add_node("symptom_agent", symptom_analysis_agent)
-    workflow.add_node("clinical_agent", clinical_reasoning_agent)
-
-    # Entry
-    workflow.set_entry_point("supervisor")
-
-    # Conditional routing
-    workflow.add_conditional_edges(
-        "supervisor",
-        lambda state: state["next_step"],
-        {
-            "symptom_agent": "symptom_agent",
-            "clinical_agent": "clinical_agent",
-            "end": END
-        }
-    )
-
-    # Flow
-    workflow.add_edge("symptom_agent", "supervisor")
-    workflow.add_edge("clinical_agent", END)
-
-    return workflow.compile()
-
-
-symptom_analysis_graph = build_graph()

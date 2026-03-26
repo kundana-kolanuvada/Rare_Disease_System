@@ -2,16 +2,16 @@ from fastapi import APIRouter
 from typing import List
 
 from app.models.schemas import DiseaseMatch, SymptomRequest
-from app.agent_graph.graph import symptom_analysis_graph
+from app.agent_graph.graph import invoke_atlas_dx
 
 router = APIRouter()
 
 
-@router.post("/diagnose", response_model=List[DiseaseMatch])
+@router.post("/diagnose")
 def diagnose_endpoint(request: SymptomRequest):
 
-    # Invoke the graph with all clinical parameters
-    result = symptom_analysis_graph.invoke({
+    # Invoke the agentic supervisor
+    result = invoke_atlas_dx({
         "symptoms": request.symptoms,
         "main_symptoms": request.main_symptoms,
         "top_k": request.top_k,
@@ -28,5 +28,5 @@ def diagnose_endpoint(request: SymptomRequest):
         "previous_tests": request.previous_tests
     })
 
-    # Return the refined diseases if they exist, otherwise fallback to matches
-    return result.get("final_matches") or result.get("matches") or []
+    # Return the final text report or structured matches if we implement parsing
+    return result
