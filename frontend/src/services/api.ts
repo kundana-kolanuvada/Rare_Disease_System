@@ -2,17 +2,11 @@ import axios from 'axios';
 
 /**
  * Base API path.
- * This is proxied by Vite to http://localhost:8000
  */
-const API_BASE_URL = '/api/v1';
+const API_BASE_URL = 'http://localhost:8000/api/v1';
 
-/**
- * Disease match returned from backend
- */
-export interface DiseaseMatch {
-  disease_name: string;
-  match_score: number;
-  matched_hpo_ids: string[];
+export interface DiagnosisResponse {
+  final_matches_text: string;
 }
 
 interface DiagnosisRequest {
@@ -33,22 +27,17 @@ interface DiagnosisRequest {
  */
 export const runDiagnostics = async (
   formData: DiagnosisRequest
-): Promise<DiseaseMatch[]> => {
+): Promise<DiagnosisResponse> => {
   try {
-    const response = await axios.post<any[]>(
+    const response = await axios.post<DiagnosisResponse>(
       `${API_BASE_URL}/diagnose`,
       {
         ...formData,
-        top_k: 5,
+        top_k: 25,
       }
     );
 
-    // Transform backend MatchedTerm objects to string array of names for the UI
-    return response.data.map(disease => ({
-      disease_name: disease.disease_name,
-      match_score: disease.match_score,
-      matched_hpo_ids: disease.matched_terms.map((term: any) => term.hpo_name)
-    }));
+    return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
       console.error(

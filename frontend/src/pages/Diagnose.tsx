@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './Diagnose.css';
 import { runDiagnostics } from '../services/api';
-import type { DiseaseMatch } from '../services/api';
+import type { DiagnosisResponse } from '../services/api';
 
 const Diagnose = () => {
   const [step, setStep] = useState(1);
@@ -23,7 +23,7 @@ const Diagnose = () => {
   const [analysisStarted, setAnalysisStarted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [results, setResults] = useState<DiseaseMatch[] | null>(null);
+  const [results, setResults] = useState<DiagnosisResponse | null>(null);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -114,36 +114,10 @@ const Diagnose = () => {
             <h2>Diagnostic Suggestions</h2>
             <p className="disclaimer">This is NOT a diagnosis. This list is for educational purposes and to facilitate discussion with medical professionals.</p>
 
-            {results.length === 0 ? (
-              <p>No matching diseases found.</p>
-            ) : (
-              results.map((disease, index) => (
-                <div className="result-card" key={index}>
-                  <div className="result-header">
-                    <div className="title-group">
-                      <h3>{disease.disease_name}</h3>
-                      {disease.orpha_code && <span className="orpha-tag">ORPHA:{disease.orpha_code}</span>}
-                    </div>
-                    <span className="match-score">{(disease.match_score * 100).toFixed(1)}%</span>
-                  </div>
-                  
-                  <div className="clinical-info-grid">
-                    {disease.onset && <div className="info-item"><strong>Onset:</strong> {disease.onset}</div>}
-                    {disease.inheritance && <div className="info-item"><strong>Inheritance:</strong> {disease.inheritance}</div>}
-                    {disease.prevalence && <div className="info-item"><strong>Prevalence:</strong> {disease.prevalence}</div>}
-                  </div>
+            <div className="report-content" style={{ textAlign: 'left', whiteSpace: 'pre-wrap', padding: '20px', backgroundColor: '#f9f9f9', borderRadius: '8px', border: '1px solid #eee' }}>
+              {results.final_matches_text}
+            </div>
 
-                  <div className="result-details">
-                    <h4>Top Matching Findings:</h4>
-                    <div className="tag-cloud">
-                      {disease.matched_hpo_ids.slice(0, 8).map((name) => (
-                        <span className="symptom-tag" key={name}>{name}</span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
             <button onClick={() => { setAnalysisStarted(false); setStep(1); }} className="btn-secondary restart-btn">New Analysis</button>
           </div>
         );

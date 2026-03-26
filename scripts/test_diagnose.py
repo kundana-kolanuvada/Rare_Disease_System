@@ -1,13 +1,14 @@
-from app.agent_graph.graph import symptom_analysis_graph
+import os
+os.environ["LANGCHAIN_TRACING_V2"] = "false"
+from app.agent_graph.graph import invoke_atlas_dx
+
 def run_test_case(title, input_data):
     print(f"\n===== {title} =====")
-
-    result = symptom_analysis_graph.invoke(input_data)
-
-    final_matches = result.get("final_matches", [])
-
-    for i, disease in enumerate(final_matches, 1):
-        print(f"{i}. {disease.disease_name} → Score: {disease.match_score}")
+    
+    result = invoke_atlas_dx(input_data)
+    
+    print("\n--- [FINAL SUPERVISOR OUTPUT] ---")
+    print(result.get("final_matches_text"))
 
 if __name__ == "__main__":
     
