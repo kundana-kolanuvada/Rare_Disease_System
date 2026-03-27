@@ -23,6 +23,9 @@ atlas_dx_supervisor = create_agent(
     Synchronous Operation: Always wait for the result of the previous agent before calling the next one."""
 )
 
+import json
+import re
+
 def invoke_atlas_dx(input_data: dict):
     # Combine patient info for the supervisor
     patient_description = f"""
@@ -37,7 +40,22 @@ def invoke_atlas_dx(input_data: dict):
         "messages": [HumanMessage(content=patient_description)]
     })
     
-    # Get the last message from the result
+    last_msg_content = response["messages"][-1].content
+    
+    # Attempt to extract JSON from the last message (sometimes LLMs wrap JSON in code blocks)
+    try:
+        json_match = re.search(r'\{.*\}', last_msg_content, re.DOTALL)
+        if json_match:
+            data = json.loads(json_match.group())
+            return {
+                "final_matches_text": data.get("report_text", last_msg_content),
+                "structured_results": data.get("structured_results", [])
+            }
+    except Exception:
+        pass
+
+    # Fallback if parsing fails
     return {
-        "final_matches_text": response["messages"][-1].content
+        "final_matches_text": last_msg_content,
+        "structured_results": []
     }

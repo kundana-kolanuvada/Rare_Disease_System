@@ -114,8 +114,27 @@ const Diagnose = () => {
             <h2>Diagnostic Suggestions</h2>
             <p className="disclaimer">This is NOT a diagnosis. This list is for educational purposes and to facilitate discussion with medical professionals.</p>
 
+            {results.structured_results && results.structured_results.length > 0 && (
+              <div className="disease-cards">
+                {results.structured_results.map((item, index) => (
+                  <div key={index} className="disease-card">
+                    <div className="card-header">
+                      <h3>{item.name}</h3>
+                      <span className="match-score">Match: {item.score}%</span>
+                    </div>
+                    <p className="evidence-preview">{item.evidence_summary}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <h3>Detailed Medical Report</h3>
             <div className="report-content" style={{ textAlign: 'left', whiteSpace: 'pre-wrap', padding: '20px', backgroundColor: '#f9f9f9', borderRadius: '8px', border: '1px solid #eee' }}>
               {results.final_matches_text}
+            </div>
+
+            <div className="recommendation-notice" style={{ marginTop: '20px', padding: '15px', backgroundColor: '#e7f3ff', borderRadius: '8px', borderLeft: '5px solid #2196f3' }}>
+              <strong>Note:</strong> Actionable recommendations and next steps are currently being finalized by our Recommendation Agent (under development).
             </div>
 
             <button onClick={() => { setAnalysisStarted(false); setStep(1); }} className="btn-secondary restart-btn">New Analysis</button>

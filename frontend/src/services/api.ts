@@ -7,6 +7,11 @@ const API_BASE_URL = 'http://localhost:8000/api/v1';
 
 export interface DiagnosisResponse {
   final_matches_text: string;
+  structured_results: Array<{
+    name: string;
+    score: string | number;
+    evidence_summary: string;
+  }>;
 }
 
 interface DiagnosisRequest {
