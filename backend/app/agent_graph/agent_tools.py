@@ -31,9 +31,9 @@ symptom_subagent = create_agent(
     Your goal is to take normalized medical symptoms and find the top 25 matching diseases.
     
     INSTRUCTIONS:
-    1. Use 'disease_vector_search_tool' with the provided symptoms.
+    1. Use 'disease_vector_search_tool' ONCE with the provided symptoms.
     2. Format the output as a concise list of disease names and scores.
-    3. Return the results clearly."""
+    3. Return the results clearly. Do not repeat the search if you already have results."""
 )
 
 @tool
@@ -42,10 +42,11 @@ def call_symptom_agent(structured_symptoms: str) -> str:
     Expert in finding initial disease matches from the vector database using structured symptoms.
     Use this tool after symptoms have been extracted and normalized.
     """
-    # Synchronous call to the subagent
-    result = symptom_subagent.invoke({
-        "messages": [HumanMessage(content=f"Find matches for these structured symptoms: {structured_symptoms}")]
-    })
+    # Synchronous call to the subagent with explicit recursion limit
+    result = symptom_subagent.invoke(
+        {"messages": [HumanMessage(content=f"Find matches for these structured symptoms: {structured_symptoms}")]},
+        config={"recursion_limit": 50}
+    )
     
     # Extract the last message content which should be the final answer
     return result["messages"][-1].content
@@ -61,43 +62,59 @@ clinical_subagent = create_agent(
     Your goal is to take a list of diseases and refine their ranking based on patient history.
     
     INSTRUCTIONS:
-    1. Call 'deterministic_clinical_scorer_tool' with the matches and patient info to get accurate scores.
+    1. Call 'deterministic_clinical_scorer_tool' ONCE with the matches and patient info to get accurate scores.
     2. Review those scores alongside your medical knowledge of onset, genetics, and inheritance.
     3. Return the final top 5 diseases with a brief clinical reasoning for each.
+    4. Once you have the refined scores and reasoning, STOP and provide your final response. Do not call the tool again if you already have the refined scores.
     """
 )
 
 @tool
-def call_clinical_reasoning_agent(matches_data: str, patient_info: str) -> str:
+def call_clinical_reasoning_agent(matches_data: str, patient_info: str = "") -> str:
     """
     Expert in clinical refinement. Adjusts rankings based on demographics, genetics, and history.
     """
-    result = clinical_subagent.invoke({
-        "messages": [HumanMessage(content=f"Refine these matches: {matches_data}\n\nPatient Profile: {patient_info}")]
-    })
+    # Increase recursion limit to 50 and specify it in config
+    result = clinical_subagent.invoke(
+        {"messages": [HumanMessage(content=f"Refine these matches: {matches_data}\n\nPatient Profile: {patient_info}")]},
+        config={"recursion_limit": 50}
+    )
     return result["messages"][-1].content
 
-# --- Subagent 3: Evidence Agent ---
+# --- Subagent 3: Clinical Analysis Expert (Merged Evidence + Recommendations) ---
 @tool
-def call_evidence_agent(top_matches: str) -> str:
+def call_evidence_agent(top_matches: str, patient_info: str) -> str:
     """
-    Expert in gathering medical evidence and explaining why specific diseases match the symptoms.
-    Provides transparency and reduces the 'black box' nature of the AI.
+    Expert in gathering medical evidence, explaining diagnostic reasoning, 
+    and providing actionable next steps (tests, referrals, red flags).
     """
     prompt = f"""
+    You are the Senior Clinical Analyst for Atlas Dx. 
     Review these top diagnostic suggestions: {top_matches}
+
+    Patient Info:
+    {patient_info}
     
-    For each disease, provide:
-    1. Key diagnostic criteria from medical literature (Orphanet, PubMed).
-    2. Why this patient's presentation specifically fits these criteria.
-    3. Potential differential diagnosis considerations.
-    
+    TASK:
+    1. For each disease, provide key diagnostic criteria and explain why it fits this patient.
+    2. Suggest specific differential diagnosis considerations.
+    3. Provide actionable recommendations (tests, specialists, red flags).
+
     FORMAT INSTRUCTIONS:
-    You MUST return your response as a JSON object with two keys:
-    1. "report_text": A full, professional medical report in markdown.
-    2. "structured_results": A list of objects, each with "name", "score", and "evidence_summary".
+    Return ONLY valid JSON. Do not include any text before or after the JSON.
+    You MUST return your response as a JSON object with these exact keys:
     
-    Ensure the JSON is valid and escaped correctly.
+    1. "report_text": A cohesive narrative summary of the clinical findings.
+    2. "structured_results": A list of objects, each containing:
+       - "name": Disease name
+       - "score": Match percentage (use the provided scores)
+       - "evidence_summary": 2-3 sentences on clinical fit.
+    3. "recommendations": {{
+        "tests": ["Specific test 1", "Specific test 2"],
+        "referrals": ["Specialist 1", "Specialist 2"],
+        "red_flags": ["Urgent sign 1", "Urgent sign 2"],
+        "next_steps": ["Immediate next step 1", "Step 2"]
+    }}
     """
     response = llm.invoke(prompt)
     return response.content
