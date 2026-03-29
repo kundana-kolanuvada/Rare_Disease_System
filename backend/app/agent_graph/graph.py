@@ -53,7 +53,6 @@ def invoke_atlas_dx(input_data: dict):
     Consanguinity {input_data.get('consanguinity')}, Genetic testing {input_data.get('genetic_testing')}
     """
 
-    # --- Invoke supervisor agent with increased recursion limit ---
     response = atlas_dx_supervisor.invoke(
         {"messages": [HumanMessage(content=patient_description)]},
         config={"recursion_limit": 100}
@@ -79,7 +78,6 @@ def invoke_atlas_dx(input_data: dict):
     except Exception as e:
         print("JSON parsing failed:", e)
 
-    # --- Fallback ---
     return {
         "final_matches_text": last_msg_content,
         "structured_results": [],

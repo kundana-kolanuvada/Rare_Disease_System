@@ -47,11 +47,9 @@ def deterministic_clinical_scorer_tool(matches_json: str, patient_info: str) -> 
     Use this to get grounded, non-hallucinated scores for clinical refinement.
     """
 
-    # --- Safety check ---
     if not matches_json:
         return "Error: Empty matches input."
 
-    # --- Parse matches ---
     initial_matches = []
     lines = matches_json.strip().split('\n')
 
@@ -62,8 +60,6 @@ def deterministic_clinical_scorer_tool(matches_json: str, patient_info: str) -> 
 
         if name_match:
             disease_name, orpha_code, score = name_match.groups()
-
-            # Extract optional metadata safely
             onset_match = re.search(r'Onset:\s*([^,\)]+)', line)
             inheritance_match = re.search(r'Inheritance:\s*([^,\)]+)', line)
             genes_match = re.search(r'Genes:\s*([^,\)]+)', line)
@@ -83,7 +79,6 @@ def deterministic_clinical_scorer_tool(matches_json: str, patient_info: str) -> 
     if not initial_matches:
         return "Error: No initial matches provided."
 
-    # --- Parse patient info (ROBUST VERSION) ---
     def get_val(pattern, text):
         m = re.search(pattern, text, re.IGNORECASE)
         return m.group(1).strip() if m else None
@@ -95,7 +90,6 @@ def deterministic_clinical_scorer_tool(matches_json: str, patient_info: str) -> 
     consang = get_val(r"Consanguinity\s*([^,\n]+)", patient_info)
     genetics = get_val(r"Genetic testing\s*([^,\n]+)", patient_info)
 
-    # --- Run deterministic refinement ---
     refined = refine_matches(
         matches=initial_matches,
         age=int(age) if age and age.isdigit() else None,
@@ -105,10 +99,9 @@ def deterministic_clinical_scorer_tool(matches_json: str, patient_info: str) -> 
         symptom_onset=onset,
         genetic_testing=genetics,
         main_symptoms=None,
-        top_k=15
+        top_k=5
     )
 
-    # --- Format output ---
     results = ["DETERMINISTIC RE-RANKING:"]
     for m in refined:
         results.append(f"- {m.disease_name} (New Score: {m.match_score})")

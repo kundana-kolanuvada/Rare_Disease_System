@@ -4,8 +4,6 @@ from typing import List, Dict
 
 from app.services.embedding_service import generate_embedding
 
-# --- Pre-computation and Initialization ---
-
 BASE_DIR = os.path.dirname(
     os.path.dirname(
         os.path.dirname(
@@ -17,16 +15,11 @@ BASE_DIR = os.path.dirname(
 chroma_client = chromadb.PersistentClient(
     path=os.path.join(BASE_DIR, "chroma_db")
 )
-
-# This will load the new collection we are about to create
 collection = chroma_client.get_or_create_collection(name="diseases")
-
-
-# --- Main Service Function ---
 
 def match_diseases(
     symptom_text: str,
-    top_k: int = 25
+    top_k: int = 15
 ) -> List[Dict]:
     """
     Performs vector search and returns disease matches using metadata stored in ChromaDB.

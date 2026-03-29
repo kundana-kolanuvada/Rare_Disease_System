@@ -28,5 +28,4 @@ def diagnose_endpoint(request: SymptomRequest):
         "previous_tests": request.previous_tests
     })
 
-    # Return the final text report or structured matches if we implement parsing
     return result

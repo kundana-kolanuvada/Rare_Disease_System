@@ -18,21 +18,19 @@ def calculate_clinical_fit(
     
     # 1. Age of Onset Match (High Importance)
     if symptom_onset and disease.onset:
-        # User onset is a single value like "Infancy"
-        # Disease onset is a comma-separated string like "Infancy, Childhood"
         if symptom_onset.lower() in disease.onset.lower():
             multiplier *= 1.3  # 30% boost for matching the expected onset window
         else:
             multiplier *= 0.7  # 30% penalty for onset mismatch
 
-    # 2. Genetic Variant Match (Extremely High Importance - The "Kill Switch")
+    # 2. Genetic Variant Match 
     if genetic_testing and disease.genes:
         # Check if any mentioned gene (e.g., COL1A1) is in the disease metadata
         user_genes = [g.strip().upper() for g in genetic_testing.replace(',', ' ').split()]
         disease_genes = [g.strip().upper() for g in disease.genes.split(',')]
         
         if any(gene in disease_genes for gene in user_genes if gene):
-            multiplier *= 2.0  # Double the score if the specific gene matches
+            multiplier *= 2.0 
 
     # 3. Inheritance & Family History
     if disease.inheritance:
@@ -49,7 +47,6 @@ def calculate_clinical_fit(
                 multiplier *= 1.5 # Stronger boost for males with X-linked history
 
     # 4. Main Symptom Weighting (Frequency)
-    # Note: In a production version, we would parse the symptom-specific frequency here.
     return multiplier
 
 def refine_matches(
@@ -82,5 +79,5 @@ def refine_matches(
     # Re-sort based on refined score
     refined_list.sort(key=lambda x: x.match_score, reverse=True)
     
-    # Return final requested amount (usually top 5)
+    # Return final requested amount
     return refined_list[:top_k]

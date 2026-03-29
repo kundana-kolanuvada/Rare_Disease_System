@@ -12,7 +12,6 @@ logging.getLogger('urllib3').setLevel(logging.CRITICAL)
 from langchain_groq import ChatGroq
 
 from dotenv import load_dotenv
-# Load .env variables
 load_dotenv()
 
 def get_llm():

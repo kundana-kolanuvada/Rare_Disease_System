@@ -23,15 +23,14 @@ def call_extraction_agent(raw_text: str) -> str:
     return ", ".join(extracted) if extracted else "No clear symptoms found."
 
 # --- Subagent 1: Symptom Analysis Agent ---
-# We create this agent using create_agent as instructed.
 symptom_subagent = create_agent(
     model=llm, 
     tools=[disease_vector_search_tool],
     system_prompt="""You are the Symptom Analysis Expert for Atlas Dx. 
-    Your goal is to take normalized medical symptoms and find the top 25 matching diseases.
+    Your goal is to take normalized medical symptoms and find the top 15 matching diseases.
     
     INSTRUCTIONS:
-    1. Use 'disease_vector_search_tool' ONCE with the provided symptoms.
+    1. Use 'disease_vector_search_tool' ONCE with the provided symptoms (top_k=15).
     2. Format the output as a concise list of disease names and scores.
     3. Return the results clearly. Do not repeat the search if you already have results."""
 )
@@ -42,13 +41,10 @@ def call_symptom_agent(structured_symptoms: str) -> str:
     Expert in finding initial disease matches from the vector database using structured symptoms.
     Use this tool after symptoms have been extracted and normalized.
     """
-    # Synchronous call to the subagent with explicit recursion limit
     result = symptom_subagent.invoke(
-        {"messages": [HumanMessage(content=f"Find matches for these structured symptoms: {structured_symptoms}")]},
+        {"messages": [HumanMessage(content=f"Find top 15 matches for these structured symptoms: {structured_symptoms}")]},
         config={"recursion_limit": 50}
     )
-    
-    # Extract the last message content which should be the final answer
     return result["messages"][-1].content
 
 
@@ -74,7 +70,6 @@ def call_clinical_reasoning_agent(matches_data: str, patient_info: str = "") -> 
     """
     Expert in clinical refinement. Adjusts rankings based on demographics, genetics, and history.
     """
-    # Increase recursion limit to 50 and specify it in config
     result = clinical_subagent.invoke(
         {"messages": [HumanMessage(content=f"Refine these matches: {matches_data}\n\nPatient Profile: {patient_info}")]},
         config={"recursion_limit": 50}
@@ -103,18 +98,19 @@ def call_evidence_agent(top_matches: str, patient_info: str) -> str:
     FORMAT INSTRUCTIONS:
     Return ONLY valid JSON. Do not include any text before or after the JSON.
     You MUST return your response as a JSON object with these exact keys:
-    
+
     1. "report_text": A cohesive narrative summary of the clinical findings.
     2. "structured_results": A list of objects, each containing:
        - "name": Disease name
-       - "score": Match percentage (use the provided scores)
-       - "evidence_summary": 2-3 sentences on clinical fit.
-    3. "recommendations": {{
-        "tests": ["Specific test 1", "Specific test 2"],
-        "referrals": ["Specialist 1", "Specialist 2"],
-        "red_flags": ["Urgent sign 1", "Urgent sign 2"],
-        "next_steps": ["Immediate next step 1", "Step 2"]
-    }}
+       - "score": Match percentage
+       - "explanation": A brief, plain-language description of what the disease is.
+       - "evidence": Detailed explanation of why this patient's symptoms match this disease.
+       - "recommendations": {
+            "tests": ["Specific test 1", "Specific test 2"],
+            "referrals": ["Specialist 1", "Specialist 2"],
+            "red_flags": ["Urgent sign 1", "Urgent sign 2"],
+            "next_steps": ["Immediate next step 1", "Step 2"]
+         }
     """
     response = llm.invoke(prompt)
     return response.content
