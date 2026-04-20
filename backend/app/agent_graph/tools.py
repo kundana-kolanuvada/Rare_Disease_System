@@ -11,7 +11,7 @@ import re
 
 # --- Tool 1: Vector Search ---
 @tool
-def disease_vector_search_tool(symptom_text: str, top_k: int = 25) -> str:
+def disease_vector_search_tool(symptom_text: str, top_k: int = 15) -> str:
     """
     Search for rare diseases in the vector database based on patient symptoms.
     Returns a formatted string of top matches including ORPHA codes and similarity scores.
@@ -50,13 +50,16 @@ def deterministic_clinical_scorer_tool(matches_json: str, patient_info: str) -> 
     if not matches_json:
         return "Error: Empty matches input."
 
+    # Remove any headers like "SYMPTOM_MATCHES:" if they exist
+    clean_json = re.sub(r'^[A-Z_]+:\s*', '', matches_json.strip())
+
     initial_matches = []
-    lines = matches_json.strip().split('\n')
+    lines = clean_json.split('\n')
 
     for line in lines:
         # Example:
         # - Disease Name (ORPHA:123, Score: 0.85, Onset: Infancy, Inheritance: Autosomal dominant, Genes: GDI1)
-        name_match = re.search(r'- (.*?) \(ORPHA:(\d+), Score: ([\d.]+)', line)
+        name_match = re.search(r'[-*]\s*(.*?)\s*\(ORPHA:(\d+),\s*Score:\s*([\d.]+)', line)
 
         if name_match:
             disease_name, orpha_code, score = name_match.groups()

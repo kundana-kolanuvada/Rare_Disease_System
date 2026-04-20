@@ -25,12 +25,22 @@ interface DiagnosisResponse {
 const ExpandableDiseaseCard = ({ disease }: { disease: DiseaseResult }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
+  // Helper to format score correctly
+  const formatScore = (score: string | number) => {
+    const numScore = typeof score === 'string' ? parseFloat(score) : score;
+    // If the LLM gives us a decimal (e.g. 0.85) instead of percentage (85), multiply by 100
+    if (numScore > 0 && numScore < 1) {
+      return (numScore * 100).toFixed(1);
+    }
+    return numScore.toString();
+  };
+
   return (
     <div className={`disease-card ${isExpanded ? 'expanded' : ''}`} onClick={() => setIsExpanded(!isExpanded)}>
       <div className="card-header">
         <div className="title-section">
           <h3>{disease.name}</h3>
-          <span className="match-score">Match: {disease.score}%</span>
+          <span className="match-score">Match: {formatScore(disease.score)}%</span>
         </div>
         <div className="expand-icon">{isExpanded ? '−' : '+'}</div>
       </div>

@@ -16,10 +16,20 @@ load_dotenv()
 
 def get_llm():
     """
-    Returns initialized LLM (Groq)
+    Returns initialized High-Reasoning LLM (70b)
     """
     return ChatGroq(
         api_key=os.getenv("GROQ_API_KEY"),
         model="llama-3.3-70b-versatile",
+        temperature=0
+    )
+
+def get_fast_llm():
+    """
+    Returns initialized Fast LLM (8b) for sub-agent tasks
+    """
+    return ChatGroq(
+        api_key=os.getenv("GROQ_API_KEY"),
+        model="llama-3.1-8b-instant",
         temperature=0
     )

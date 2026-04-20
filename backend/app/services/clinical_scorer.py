@@ -19,9 +19,9 @@ def calculate_clinical_fit(
     # 1. Age of Onset Match (High Importance)
     if symptom_onset and disease.onset:
         if symptom_onset.lower() in disease.onset.lower():
-            multiplier *= 1.3  # 30% boost for matching the expected onset window
+            multiplier *= 1.5  # Boost from 1.3
         else:
-            multiplier *= 0.7  # 30% penalty for onset mismatch
+            multiplier *= 0.6  # Penalty from 0.7
 
     # 2. Genetic Variant Match 
     if genetic_testing and disease.genes:
@@ -30,21 +30,21 @@ def calculate_clinical_fit(
         disease_genes = [g.strip().upper() for g in disease.genes.split(',')]
         
         if any(gene in disease_genes for gene in user_genes if gene):
-            multiplier *= 2.0 
+            multiplier *= 4.0 # Huge boost for genetic match
 
     # 3. Inheritance & Family History
     if disease.inheritance:
         inh = disease.inheritance.lower()
         # Consanguinity (Parents related) -> Boost Recessive diseases
         if consanguinity == "Yes" and "recessive" in inh:
-            multiplier *= 1.4
+            multiplier *= 1.8
             
         # Family History -> Boost Dominant or X-linked
         if family_history == "Yes":
             if "dominant" in inh:
-                multiplier *= 1.3
+                multiplier *= 1.6
             elif "x-linked" in inh and sex == "Male":
-                multiplier *= 1.5 # Stronger boost for males with X-linked history
+                multiplier *= 1.8 # Stronger boost for males with X-linked history
 
     # 4. Main Symptom Weighting (Frequency)
     return multiplier
@@ -72,8 +72,9 @@ def refine_matches(
             genetic_testing, main_symptoms
         )
         
-        # Calculate new score
-        match.match_score = round(min(0.99, match.match_score * multiplier), 4)
+        # Calculate new score (scaled to 100)
+        raw_score = match.match_score * multiplier
+        match.match_score = round(min(99.0, raw_score * 100), 1)
         refined_list.append(match)
     
     # Re-sort based on refined score

@@ -22,20 +22,18 @@ atlas_dx_supervisor = create_agent(
         call_evidence_agent
     ],
     system_prompt="""You are the Lead Diagnostic Supervisor for Atlas Dx.
-    Your mission is to find the most likely rare disease diagnosis and provide evidence-based reasoning.
-
-    STEP-BY-STEP WORKFLOW:
-    1. Call 'call_extraction_agent' with the patient's raw symptoms to get normalized medical terms.
-    2. Call 'call_symptom_agent' with the normalized terms to get 25 initial matches.
-    3. Call 'call_clinical_reasoning_agent' with those matches and the patient's history.
-    4. Call 'call_evidence_agent' with top_matches and patient_info.
-    5. Return the final structured JSON output from the evidence agent.
+    
+    STRICT SEQUENTIAL WORKFLOW:
+    1. Call 'call_extraction_agent' with raw symptoms. WAIT for result.
+    2. Call 'call_symptom_agent' ONLY after you have the extracted symptoms.
+    3. Call 'call_clinical_reasoning_agent' ONLY after you have the initial matches.
+    4. Call 'call_evidence_agent' ONLY after you have the refined matches.
+    5. FINISH: Once you have the JSON from 'call_evidence_agent', you MUST STOP and provide that JSON as your final answer.
 
     IMPORTANT RULES:
-    - Always wait for the result of the previous step before moving to the next.
-    - Do NOT skip any step.
-    - Do NOT generate final answers yourself — rely on tools.
-    - Ensure the final output is valid JSON (no extra text outside JSON).
+    - DO NOT call tools in parallel.
+    - DO NOT call a tool until you have the required input from the previous tool.
+    - DO NOT summarize the JSON. Your final answer must be ONLY the JSON object.
     """
 )
 
@@ -53,12 +51,14 @@ def invoke_atlas_dx(input_data: dict):
     Consanguinity {input_data.get('consanguinity')}, Genetic testing {input_data.get('genetic_testing')}
     """
 
+    print("\n[DEBUG] Supervisor -> Starting diagnostic pipeline...")
     response = atlas_dx_supervisor.invoke(
         {"messages": [HumanMessage(content=patient_description)]},
-        config={"recursion_limit": 100}
+        config={"recursion_limit": 90}
     )
 
     last_msg_content = response["messages"][-1].content
+    print(f"\n[DEBUG] Supervisor -> Pipeline Finished. Raw output length: {len(last_msg_content)}")
 
     # --- Extract JSON safely ---
     try:
