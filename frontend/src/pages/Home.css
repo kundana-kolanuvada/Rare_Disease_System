@@ -8,34 +8,27 @@
   );
   display: flex;
   flex-direction: column;
+  align-items: center;
 }
 
-/* .home-wrapper {
-  min-height: 90.5vh;
-  padding-bottom: 0px;
-  /* Background image */
-  /* background-image: url("/bg-home.avif");
-  background-size: cover;       
-  background-position: center;  
-  background-repeat: no-repeat; 
-
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-} */ 
-
-/* Center content */
 .home-content {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  text-align: center;
-  transform: translateY(-30px); /* key difference */
+  width: 100%;
+  max-width: 1200px;
+  padding: 40px 20px;
 }
 
+.hero-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 60px; 
+}
 
 .home-content h1 {
   font-size: 38px;
@@ -44,7 +37,6 @@
   margin-bottom: 10px;
 }
 
-
 .subtitle {
   font-size: 16px;
   color: #475569;
@@ -52,8 +44,11 @@
   margin-bottom: 26px;
 }
 
+.button-group {
+  display: flex;
+  gap: 14px;
+}
 
-/* Buttons */
 .btn-primary {
   background-color: #2563eb;
   color: white;
@@ -76,14 +71,78 @@
   cursor: pointer;
 }
 
-.button-group {
-  display: flex;
-  gap: 14px;
+/* --- Pipeline Styles --- */
+.pipeline-container {
+  width: 100%;
 }
-/* Footer disclaimer */
+
+.pipeline-card {
+  display: flex;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 24px;
+  padding: 30px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+}
+
+.pipeline-step {
+  flex: 1;
+  text-align: left;
+  padding: 0 15px;
+}
+
+.step-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.step-number {
+  font-size: 12px;
+  font-weight: 800;
+  color: #2563eb;
+  opacity: 0.5;
+}
+
+.step-icon {
+  background: white;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.pipeline-step h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e3a8a;
+  margin-bottom: 6px;
+}
+
+.pipeline-step p {
+  font-size: 12.5px;
+  color: #64748b;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.pipeline-connector {
+  width: 1px;
+  height: 60px;
+  background: #e2e8f0;
+  align-self: center;
+}
+
 .home-footer {
   text-align: center;
   font-size: 12px;
   color: #64748b;
-  margin-bottom: 0px;
+  padding: 20px;
+
 }

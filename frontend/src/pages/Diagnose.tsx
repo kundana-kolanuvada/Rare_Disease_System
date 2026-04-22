@@ -1,84 +1,7 @@
 import React, { useState } from 'react';
 import './Diagnose.css';
 import { runDiagnostics } from '../services/api';
-
-interface RecommendationData {
-  tests: string[];
-  referrals: string[];
-  red_flags: string[];
-  next_steps: string[];
-}
-
-interface DiseaseResult {
-  name: string;
-  score: string | number;
-  explanation: string;
-  evidence: string;
-  recommendations: RecommendationData;
-}
-
-interface DiagnosisResponse {
-  final_matches_text: string;
-  structured_results: DiseaseResult[];
-}
-
-const ExpandableDiseaseCard = ({ disease }: { disease: DiseaseResult }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  // Helper to format score correctly
-  const formatScore = (score: string | number) => {
-    const numScore = typeof score === 'string' ? parseFloat(score) : score;
-    // If the LLM gives us a decimal (e.g. 0.85) instead of percentage (85), multiply by 100
-    if (numScore > 0 && numScore < 1) {
-      return (numScore * 100).toFixed(1);
-    }
-    return numScore.toString();
-  };
-
-  return (
-    <div className={`disease-card ${isExpanded ? 'expanded' : ''}`} onClick={() => setIsExpanded(!isExpanded)}>
-      <div className="card-header">
-        <div className="title-section">
-          <h3>{disease.name}</h3>
-          <span className="match-score">Match: {formatScore(disease.score)}%</span>
-        </div>
-        <div className="expand-icon">{isExpanded ? '−' : '+'}</div>
-      </div>
-      
-      <div className="card-preview">
-        <p className="disease-explanation"><strong>Overview:</strong> {disease.explanation}</p>
-      </div>
-
-      {isExpanded && (
-        <div className="card-details" onClick={(e) => e.stopPropagation()}>
-          <div className="detail-section">
-            <h4>Clinical Evidence</h4>
-            <p className="evidence-text">{disease.evidence}</p>
-          </div>
-
-          <div className="detail-section recommendations-grid">
-            <div className="rec-column">
-              <h5>Diagnostic Tests</h5>
-              <ul>{disease.recommendations.tests.map((t, i) => <li key={i}>{t}</li>)}</ul>
-            </div>
-            <div className="rec-column">
-              <h5>Specialist Referrals</h5>
-              <ul>{disease.recommendations.referrals.map((r, i) => <li key={i}>{r}</li>)}</ul>
-            </div>
-            <div className="rec-column urgent">
-              <h5>Red Flags</h5>
-              <ul>{disease.recommendations.red_flags.map((rf, i) => <li key={i}>{rf}</li>)}</ul>
-            </div>
-            <div className="rec-column next-steps">
-              <h5>Next Steps</h5>
-              <ul>{disease.recommendations.next_steps.map((ns, i) => <li key={i}>{ns}</li>)}</ul>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
+import type { DiagnosisResponse } from '../services/api';
 
 const Diagnose = () => {
   const [step, setStep] = useState(1);
@@ -153,10 +76,25 @@ const Diagnose = () => {
     setResults(null);
 
     try {
-      const response = await runDiagnostics(formData as any);
+      const requestPayload: Parameters<typeof runDiagnostics>[0] = {
+        age: formData.age,
+        sex: formData.sex,
+        ethnicity: formData.ethnicity,
+        country: '',
+        symptoms: formData.mainSymptoms
+          ? `${formData.symptoms}\n\nMain symptoms: ${formData.mainSymptoms}`
+          : formData.symptoms,
+        familyHistory: formData.familyHistory,
+        familyHistoryDescription: formData.familyHistoryDescription,
+        symptomOnset: formData.symptomOnset,
+        previousDiagnoses: formData.previousDiagnoses,
+        previousTests: formData.geneticTesting,
+      };
+
+      const response = await runDiagnostics(requestPayload);
       setResults(response);
-    } catch (err: any) {
-      setError(err.message || 'Something went wrong.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.');
       setResults(null);
     } finally {
       setIsLoading(false);
@@ -170,7 +108,7 @@ const Diagnose = () => {
           <div className="analysis-results">
             <h2>Analyzing clinical fit...</h2>
             <div className="spinner"></div>
-            <p>Comparing symptoms against 7,000+ rare diseases.</p>
+            <p>Comparing symptoms and demographics against 7,000+ rare diseases.</p>
           </div>
         );
       }
@@ -189,21 +127,29 @@ const Diagnose = () => {
         return (
           <div className="analysis-results">
             <h2>Diagnostic Suggestions</h2>
-            <p className="disclaimer">
-              This is NOT a diagnosis. This list is for educational purposes and to facilitate discussion with medical professionals.
-            </p>
+            <p className="disclaimer">This is NOT a diagnosis. This list is for educational purposes and to facilitate discussion with medical professionals.</p>
 
             {results.structured_results && results.structured_results.length > 0 && (
-              <div className="disease-cards-container">
+              <div className="disease-cards">
                 {results.structured_results.map((item, index) => (
-                  <ExpandableDiseaseCard key={index} disease={item} />
+                  <div key={index} className="disease-card">
+                    <div className="card-header">
+                      <h3>{item.name}</h3>
+                      <span className="match-score">Match: {item.score}%</span>
+                    </div>
+                    <p className="evidence-preview">{item.evidence}</p>
+                  </div>
                 ))}
               </div>
             )}
 
-            <h3>Overall Clinical Summary</h3>
-            <div className="report-content" style={{ textAlign: 'left', whiteSpace: 'pre-wrap', padding: '20px', backgroundColor: '#f9f9f9', borderRadius: '8px', border: '1px solid #eee', marginBottom: '30px' }}>
+            <h3>Detailed Medical Report</h3>
+            <div className="report-content" style={{ textAlign: 'left', whiteSpace: 'pre-wrap', padding: '20px', backgroundColor: '#f9f9f9', borderRadius: '8px', border: '1px solid #eee' }}>
               {results.final_matches_text}
+            </div>
+
+            <div className="recommendation-notice" style={{ marginTop: '20px', padding: '15px', backgroundColor: '#e7f3ff', borderRadius: '8px', borderLeft: '5px solid #2196f3' }}>
+              <strong>Note:</strong> Actionable recommendations and next steps are currently being finalized by our Recommendation Agent (under development).
             </div>
 
             <button onClick={() => { setAnalysisStarted(false); setStep(1); }} className="btn-secondary restart-btn">New Analysis</button>
@@ -288,7 +234,7 @@ const Diagnose = () => {
               </div>
             </div>
             <div className="form-group">
-              <label>Consanguinity</label>
+              <label>Consanguinity*</label>
               <p className="input-hint">Are the biological parents related by blood?</p>
               <div className="radio-group">
                 <label><input type="radio" name="consanguinity" value="Yes" onChange={handleChange} checked={formData.consanguinity === 'Yes'} /> Yes</label>
@@ -331,7 +277,7 @@ const Diagnose = () => {
           <div className="progress-bar">
             {[1, 2, 3, 4].map(num => (
               <React.Fragment key={num}>
-                <div className={`progress-step ${step >= num ? 'active' : ''}`} onClick={() => step > num && setStep(num)}>
+                <div className={`progress-step ${step >= num ? 'active' : ''}`} onClick={() => step > num && goToStep(num)}>
                   <div className="progress-dot">{num}</div>
                 </div>
                 {num < 4 && <div className={`progress-bar-line ${step > num ? 'active' : ''}`}></div>}
