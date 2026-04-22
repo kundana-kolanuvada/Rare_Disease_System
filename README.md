@@ -20,9 +20,9 @@ It uses **RAG, semantic embeddings, and multi-agent reasoning** to generate **ra
 | Category            | Technology Used |
 |--------------------|----------------|
 | Frontend           | ![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB) |
-| Backend            | ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white) |
+| Backend            | ![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white) |
 | AI Framework       | ![LangGraph](https://img.shields.io/badge/LangGraph-000000?logo=data&logoColor=white) |
-| NLP / Embeddings   | ![SentenceTransformers](https://img.shields.io/badge/SentenceTransformers-FF6F00?logo=ai&logoColor=white) |
+| Embeddings         | ![SentenceTransformers](https://img.shields.io/badge/SentenceTransformers-FF6F00?logo=ai&logoColor=white) |
 | Vector Database    | ![ChromaDB](https://img.shields.io/badge/ChromaDB-5A67D8?logo=database&logoColor=white) |
 
 ---
