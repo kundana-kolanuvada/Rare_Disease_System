@@ -153,10 +153,25 @@ const Diagnose = () => {
     setResults(null);
 
     try {
-      const response = await runDiagnostics(formData as any);
+      const requestPayload: Parameters<typeof runDiagnostics>[0] = {
+        age: formData.age,
+        sex: formData.sex,
+        ethnicity: formData.ethnicity,
+        country: '',
+        symptoms: formData.mainSymptoms
+          ? `${formData.symptoms}\n\nMain symptoms: ${formData.mainSymptoms}`
+          : formData.symptoms,
+        familyHistory: formData.familyHistory,
+        familyHistoryDescription: formData.familyHistoryDescription,
+        symptomOnset: formData.symptomOnset,
+        previousDiagnoses: formData.previousDiagnoses,
+        previousTests: formData.geneticTesting,
+      };
+
+      const response = await runDiagnostics(requestPayload);
       setResults(response);
-    } catch (err: any) {
-      setError(err.message || 'Something went wrong.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.');
       setResults(null);
     } finally {
       setIsLoading(false);
@@ -170,7 +185,7 @@ const Diagnose = () => {
           <div className="analysis-results">
             <h2>Analyzing clinical fit...</h2>
             <div className="spinner"></div>
-            <p>Comparing symptoms against 7,000+ rare diseases.</p>
+            <p>Comparing symptoms and demographics against 7,000+ rare diseases.</p>
           </div>
         );
       }
@@ -189,21 +204,29 @@ const Diagnose = () => {
         return (
           <div className="analysis-results">
             <h2>Diagnostic Suggestions</h2>
-            <p className="disclaimer">
-              This is NOT a diagnosis. This list is for educational purposes and to facilitate discussion with medical professionals.
-            </p>
+            <p className="disclaimer">This is NOT a diagnosis. This list is for educational purposes and to facilitate discussion with medical professionals.</p>
 
             {results.structured_results && results.structured_results.length > 0 && (
-              <div className="disease-cards-container">
+              <div className="disease-cards">
                 {results.structured_results.map((item, index) => (
-                  <ExpandableDiseaseCard key={index} disease={item} />
+                  <div key={index} className="disease-card">
+                    <div className="card-header">
+                      <h3>{item.name}</h3>
+                      <span className="match-score">Match: {item.score}%</span>
+                    </div>
+                    <p className="evidence-preview">{item.evidence}</p>
+                  </div>
                 ))}
               </div>
             )}
 
-            <h3>Overall Clinical Summary</h3>
-            <div className="report-content" style={{ textAlign: 'left', whiteSpace: 'pre-wrap', padding: '20px', backgroundColor: '#f9f9f9', borderRadius: '8px', border: '1px solid #eee', marginBottom: '30px' }}>
+            <h3>Detailed Medical Report</h3>
+            <div className="report-content" style={{ textAlign: 'left', whiteSpace: 'pre-wrap', padding: '20px', backgroundColor: '#f9f9f9', borderRadius: '8px', border: '1px solid #eee' }}>
               {results.final_matches_text}
+            </div>
+
+            <div className="recommendation-notice" style={{ marginTop: '20px', padding: '15px', backgroundColor: '#e7f3ff', borderRadius: '8px', borderLeft: '5px solid #2196f3' }}>
+              <strong>Note:</strong> Actionable recommendations and next steps are currently being finalized by our Recommendation Agent (under development).
             </div>
 
             <button onClick={() => { setAnalysisStarted(false); setStep(1); }} className="btn-secondary restart-btn">New Analysis</button>
@@ -288,7 +311,7 @@ const Diagnose = () => {
               </div>
             </div>
             <div className="form-group">
-              <label>Consanguinity</label>
+              <label>Consanguinity*</label>
               <p className="input-hint">Are the biological parents related by blood?</p>
               <div className="radio-group">
                 <label><input type="radio" name="consanguinity" value="Yes" onChange={handleChange} checked={formData.consanguinity === 'Yes'} /> Yes</label>
@@ -331,7 +354,7 @@ const Diagnose = () => {
           <div className="progress-bar">
             {[1, 2, 3, 4].map(num => (
               <React.Fragment key={num}>
-                <div className={`progress-step ${step >= num ? 'active' : ''}`} onClick={() => step > num && setStep(num)}>
+                <div className={`progress-step ${step >= num ? 'active' : ''}`} onClick={() => step > num && goToStep(num)}>
                   <div className="progress-dot">{num}</div>
                 </div>
                 {num < 4 && <div className={`progress-bar-line ${step > num ? 'active' : ''}`}></div>}
