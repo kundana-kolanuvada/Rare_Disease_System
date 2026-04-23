@@ -69,11 +69,33 @@ def invoke_atlas_dx(input_data: dict):
 
         if json_match:
             data = json.loads(json_match.group())
+            
+            # --- Robust Key Mapping ---
+            # This ensures that even if the LLM changes key names slightly, the frontend gets data
+            def find_key(obj, synonyms):
+                for s in synonyms:
+                    if s in obj: return obj[s]
+                return None
+
+            report_text = find_key(data, ["report_text", "summary", "analysis_report"])
+            results = find_key(data, ["structured_results", "diseases", "matches"]) or []
+            recommendations = find_key(data, ["recommendations", "next_steps_data"]) or {}
+
+            # Standardize the results objects
+            standardized_results = []
+            for r in results:
+                standardized_results.append({
+                    "name": find_key(r, ["name", "disease_name", "title"]),
+                    "score": find_key(r, ["score", "match_score", "probability"]),
+                    "explanation": find_key(r, ["explanation", "description", "overview"]),
+                    "evidence": find_key(r, ["evidence", "clinical_evidence", "reasoning"]),
+                    "recommendations": find_key(r, ["recommendations", "clinical_management"]) or {}
+                })
 
             return {
-                "final_matches_text": data.get("report_text", last_msg_content),
-                "structured_results": data.get("structured_results", []),
-                "recommendations": data.get("recommendations", {})
+                "final_matches_text": report_text or last_msg_content,
+                "structured_results": standardized_results,
+                "recommendations": recommendations
             }
     except Exception as e:
         print("JSON parsing failed:", e)

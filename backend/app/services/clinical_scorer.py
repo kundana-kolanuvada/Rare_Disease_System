@@ -72,9 +72,9 @@ def refine_matches(
             genetic_testing, main_symptoms
         )
         
-        # Calculate new score (scaled to 100)
+        # Calculate new score (Stay as decimal)
         raw_score = match.match_score * multiplier
-        match.match_score = round(min(99.0, raw_score * 100), 1)
+        match.match_score = round(min(0.99, raw_score), 4)
         refined_list.append(match)
     
     # Re-sort based on refined score

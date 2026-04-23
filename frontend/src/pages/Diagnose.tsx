@@ -29,10 +29,10 @@ const ExpandableDiseaseCard = ({ disease }: { disease: DiseaseResult }) => {
   const formatScore = (score: string | number) => {
     const numScore = typeof score === 'string' ? parseFloat(score) : score;
     // If the LLM gives us a decimal (e.g. 0.85) instead of percentage (85), multiply by 100
-    if (numScore > 0 && numScore < 1) {
+    if (numScore > 0 && numScore <= 1) {
       return (numScore * 100).toFixed(1);
     }
-    return numScore.toString();
+    return numScore.toFixed(1);
   };
 
   return (

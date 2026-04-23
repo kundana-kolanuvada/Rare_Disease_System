@@ -42,56 +42,103 @@ def disease_vector_search_tool(symptom_text: str, top_k: int = 15) -> str:
 @tool
 def deterministic_clinical_scorer_tool(matches_json: str, patient_info: str) -> str:
     """
-    Calculates rule-based clinical fit scores for a list of diseases based on 
-    patient demographics (age, sex, onset, inheritance).
-    Use this to get grounded, non-hallucinated scores for clinical refinement.
+    Calculates rule-based clinical fit scores for a list of diseases.
     """
-
     if not matches_json:
         return "Error: Empty matches input."
 
-    # Remove any headers like "SYMPTOM_MATCHES:" if they exist
-    clean_json = re.sub(r'^[A-Z_]+:\s*', '', matches_json.strip())
-
     initial_matches = []
-    lines = clean_json.split('\n')
+    
+    # --- Try parsing as JSON or Python list first (Llama-3.1-8b often sends one of these) ---
+    clean_input = matches_json.strip()
+    if clean_input.startswith('[') or 'id' in clean_input or 'orpha_code' in clean_input:
+        try:
+            import ast
+            import json
+            
+            # Extract the list/array part
+            list_match = re.search(r'\[.*\]', clean_input, re.DOTALL)
+            if list_match:
+                match_str = list_match.group()
+                try:
+                    # Try as standard JSON first
+                    data = json.loads(match_str)
+                except json.JSONDecodeError:
+                    # Fallback to ast.literal_eval for Python-style strings (single quotes)
+                    data = ast.literal_eval(match_str)
+                
+                if isinstance(data, list):
+                    for item in data:
+                        orpha = str(item.get('orpha_code') or item.get('id', '')).replace('ORPHA:', '')
+                        name = item.get('disease_name') or item.get('name', 'Unknown')
+                        score = item.get('match_score') or item.get('score', 0.5)
+                        initial_matches.append(
+                            DiseaseMatch(
+                                disease_name=name,
+                                orpha_code=orpha,
+                                match_score=float(score),
+                                matched_terms=[]
+                            )
+                        )
+        except Exception as e:
+            # If both fail, we still have the regex fallback
+            pass
 
-    for line in lines:
-        # Example:
-        # - Disease Name (ORPHA:123, Score: 0.85, Onset: Infancy, Inheritance: Autosomal dominant, Genes: GDI1)
-        name_match = re.search(r'[-*]\s*(.*?)\s*\(ORPHA:(\d+),\s*Score:\s*([\d.]+)', line)
+    # --- Fallback to Regex for line-by-line format ---
+    if not initial_matches:
+        lines = clean_input.split('\n')
+        for line in lines:
+            # Flexible regex to catch name, orpha code, and score in almost any format
+            orpha_match = re.search(r'ORPHA:?(\d+)', line, re.IGNORECASE)
+            # Look for any number between 0 and 100 as the score
+            score_match = re.search(r'(?:Score|Match|Probability):?\s*([\d.]+)', line, re.IGNORECASE)
+            # Disease name is usually at the start of the line
+            name_match = re.search(r'[-*]\s*([^(\n]+)', line)
 
-        if name_match:
-            disease_name, orpha_code, score = name_match.groups()
-            onset_match = re.search(r'Onset:\s*([^,\)]+)', line)
-            inheritance_match = re.search(r'Inheritance:\s*([^,\)]+)', line)
-            genes_match = re.search(r'Genes:\s*([^,\)]+)', line)
-
-            initial_matches.append(
-                DiseaseMatch(
-                    disease_name=disease_name,
-                    orpha_code=orpha_code,
-                    match_score=float(score),
-                    matched_terms=[],
-                    onset=onset_match.group(1).strip() if onset_match else None,
-                    inheritance=inheritance_match.group(1).strip() if inheritance_match else None,
-                    genes=genes_match.group(1).strip() if genes_match else None
+            if orpha_match:
+                orpha_code = orpha_match.group(1)
+                disease_name = name_match.group(1).strip() if name_match else "Unknown Disease"
+                
+                # Extract score, convert to decimal if it's a percentage
+                raw_s = score_match.group(1) if score_match else "0.5" # Keep 0.5 only as last resort
+                f_score = float(raw_s)
+                if f_score > 1: f_score = f_score / 100.0
+                
+                initial_matches.append(
+                    DiseaseMatch(
+                        disease_name=disease_name,
+                        orpha_code=orpha_code,
+                        match_score=f_score,
+                        matched_terms=[]
+                    )
                 )
-            )
 
     if not initial_matches:
-        return "Error: No initial matches provided."
+        return f"Error: Could not parse matches from: {matches_json[:100]}"
 
     def get_val(pattern, text):
         m = re.search(pattern, text, re.IGNORECASE)
         return m.group(1).strip() if m else None
 
-    age = get_val(r"Age\s*(\d+)", patient_info)
-    sex = get_val(r"Sex\s*(\w+)", patient_info)
-    onset = get_val(r"Onset\s*([^,\n]+)", patient_info)
-    fam_hist = get_val(r"Family History\s*([^,\n]+)", patient_info)
-    consang = get_val(r"Consanguinity\s*([^,\n]+)", patient_info)
-    genetics = get_val(r"Genetic testing\s*([^,\n]+)", patient_info)
+    # Robust patient info parsing (handles JSON or text)
+    age = get_val(r"age[\s\":]*(\d+)", patient_info)
+    sex = get_val(r"sex[\s\":]*(\w+)", patient_info)
+    onset = get_val(r"onset[\s\":]*([^,\n\"}]+)", patient_info)
+    fam_hist = get_val(r"(?:family_history|Family History)[\s\":]*([^,\n\"}]+)", patient_info)
+    consang = get_val(r"(?:consanguinity|Consanguinity)[\s\":]*([^,\n\"}]+)", patient_info)
+    genetics = get_val(r"(?:genetic_testing|Genetic testing)[\s\":]*([^,\n\"}]+)", patient_info)
+
+    def safe_strip(val):
+        return val.strip() if val else None
+
+    # Apply safe strip to all
+    age = safe_strip(age)
+    sex = safe_strip(sex)
+    onset = safe_strip(onset)
+    fam_hist = safe_strip(fam_hist)
+    consang = safe_strip(consang)
+    genetics = safe_strip(genetics)
+
 
     refined = refine_matches(
         matches=initial_matches,

@@ -22,7 +22,8 @@ def call_extraction_agent(raw_text: str) -> str:
     print("\n[DEBUG] Supervisor -> Extraction Agent: Starting extraction...")
     extracted = extract_structured_symptoms_rag(raw_text)
     print(f"[DEBUG] Extraction Agent -> Finished. Symptoms found: {len(extracted)}")
-    return f"EXTRACTED_SYMPTOMS: {', '.join(extracted)}" if extracted else "EXTRACTED_SYMPTOMS: No clear symptoms found."
+    # Just return the joined symptoms, no prefix
+    return ", ".join(extracted) if extracted else "No clear symptoms found."
 
 # --- Subagent 1: Symptom Analysis Agent ---
 symptom_subagent = create_agent(
@@ -30,9 +31,12 @@ symptom_subagent = create_agent(
     tools=[disease_vector_search_tool],
     system_prompt="""You are the Symptom Analysis Expert. 
     1. Call 'disease_vector_search_tool' once.
-    2. Respond ONLY with the raw list of matches. No intro or outro.
+    2. Respond ONLY with the EXACT list provided by the tool. 
+    3. DO NOT add diseases that were not in the tool's output.
+    4. DO NOT summarize. Provide the raw list with ORPHA codes and scores.
     """
 )
+
 
 @tool
 def call_symptom_agent(structured_symptoms: str) -> str:
@@ -55,8 +59,10 @@ clinical_subagent = create_agent(
     model=fast_llm,
     tools=[deterministic_clinical_scorer_tool],
     system_prompt="""You are the Clinical Refinement Expert.
-    1. Call 'deterministic_clinical_scorer_tool' once.
-    2. Respond ONLY with the tool's raw output. No extra text.
+    
+    1. Call 'deterministic_clinical_scorer_tool' ONCE.
+    2. Pass the list of diseases and patient profile exactly as provided.
+    3. Respond ONLY with the tool's raw output.
     """
 )
 
@@ -96,7 +102,9 @@ def call_evidence_agent(top_matches: str, patient_info: str) -> str:
 
     FORMAT INSTRUCTIONS:
     Return ONLY valid JSON.
-    IMPORTANT: Convert the match score from a decimal (0.50) to a percentage integer or float (50.6) for the "score" field.
+    
+    IMPORTANT: The 'top_matches' input contains scores as decimals (e.g., 0.85). 
+    You MUST convert these to a 0-100 percentage scale (e.g., 85.0) for the final "score" field.
     
     You MUST return your response as a JSON object with these exact keys:
 
