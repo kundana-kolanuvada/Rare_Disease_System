@@ -17,6 +17,17 @@ chroma_client = chromadb.PersistentClient(
 )
 collection = chroma_client.get_or_create_collection(name="diseases")
 
+
+def _first_non_empty(*values):
+    for value in values:
+        if isinstance(value, str):
+            cleaned = value.strip()
+            if cleaned:
+                return cleaned
+        elif value is not None:
+            return value
+    return None
+
 def match_diseases(
     symptom_text: str,
     top_k: int = 15
@@ -40,7 +51,7 @@ def match_diseases(
 
     matches = []
     for i in range(len(results["ids"][0])):
-        metadata = results["metadatas"][0][i]
+        metadata = results["metadatas"][0][i] or {}
         
         # 1. Retrieve the HPO IDs and Names from metadata
         hpo_ids_str = metadata.get("hpo_ids", "")
@@ -60,8 +71,20 @@ def match_diseases(
             })
 
         # 4. Construct the match result (including new clinical fields for later use)
+        disease_name = _first_non_empty(
+            metadata.get("disease_name"),
+            metadata.get("name"),
+            metadata.get("disease"),
+            metadata.get("label"),
+            metadata.get("disorder_name"),
+            metadata.get("preferred_label"),
+            metadata.get("title"),
+        )
+        if not disease_name:
+            disease_name = f"ORPHA:{metadata.get('orpha_code')}" if metadata.get("orpha_code") else "Unnamed disease"
+
         matches.append({
-            "disease_name": metadata.get("disease_name", "Unknown disease"),
+            "disease_name": disease_name,
             "match_score": round(1 - results["distances"][0][i], 4),
             "matched_terms": matched_terms_structured,
             "orpha_code": metadata.get("orpha_code"),

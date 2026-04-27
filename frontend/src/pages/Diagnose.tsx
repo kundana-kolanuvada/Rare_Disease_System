@@ -14,7 +14,7 @@ interface DiseaseResult {
   score: string | number;
   explanation: string;
   evidence: string;
-  recommendations: RecommendationData;
+  recommendations?: Partial<RecommendationData>;
 }
 
 interface DiagnosisResponse {
@@ -24,6 +24,12 @@ interface DiagnosisResponse {
 
 const ExpandableDiseaseCard = ({ disease }: { disease: DiseaseResult }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const recommendations = {
+    tests: disease.recommendations?.tests ?? [],
+    referrals: disease.recommendations?.referrals ?? [],
+    red_flags: disease.recommendations?.red_flags ?? [],
+    next_steps: disease.recommendations?.next_steps ?? [],
+  };
 
   // Helper to format score correctly
   const formatScore = (score: string | number) => {
@@ -59,19 +65,19 @@ const ExpandableDiseaseCard = ({ disease }: { disease: DiseaseResult }) => {
           <div className="detail-section recommendations-grid">
             <div className="rec-column">
               <h5>Diagnostic Tests</h5>
-              <ul>{disease.recommendations.tests.map((t, i) => <li key={i}>{t}</li>)}</ul>
+              <ul>{recommendations.tests.map((t, i) => <li key={i}>{t}</li>)}</ul>
             </div>
             <div className="rec-column">
               <h5>Specialist Referrals</h5>
-              <ul>{disease.recommendations.referrals.map((r, i) => <li key={i}>{r}</li>)}</ul>
+              <ul>{recommendations.referrals.map((r, i) => <li key={i}>{r}</li>)}</ul>
             </div>
             <div className="rec-column urgent">
               <h5>Red Flags</h5>
-              <ul>{disease.recommendations.red_flags.map((rf, i) => <li key={i}>{rf}</li>)}</ul>
+              <ul>{recommendations.red_flags.map((rf, i) => <li key={i}>{rf}</li>)}</ul>
             </div>
             <div className="rec-column next-steps">
               <h5>Next Steps</h5>
-              <ul>{disease.recommendations.next_steps.map((ns, i) => <li key={i}>{ns}</li>)}</ul>
+              <ul>{recommendations.next_steps.map((ns, i) => <li key={i}>{ns}</li>)}</ul>
             </div>
           </div>
         </div>
@@ -161,10 +167,13 @@ const Diagnose = () => {
         symptoms: formData.mainSymptoms
           ? `${formData.symptoms}\n\nMain symptoms: ${formData.mainSymptoms}`
           : formData.symptoms,
+        mainSymptoms: formData.mainSymptoms,
         familyHistory: formData.familyHistory,
         familyHistoryDescription: formData.familyHistoryDescription,
+        consanguinity: formData.consanguinity,
         symptomOnset: formData.symptomOnset,
         previousDiagnoses: formData.previousDiagnoses,
+        geneticTesting: formData.geneticTesting,
         previousTests: formData.geneticTesting,
       };
 

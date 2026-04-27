@@ -1,5 +1,6 @@
 import os
 import json
+import re
 from langchain.tools import tool
 from typing import List, Dict, Any
 from langchain.agents import create_agent
@@ -10,6 +11,21 @@ from app.models.schemas import DiseaseMatch
 
 llm = get_llm()
 fast_llm = get_fast_llm()
+
+
+def _parse_ranked_matches(top_matches: str) -> List[Dict[str, Any]]:
+    ranked = []
+    for line in top_matches.splitlines():
+        match = re.match(r"^\s*-\s*(.+?)\s+\(New Score:\s*([\d.]+)\)\s*$", line.strip())
+        if not match:
+            continue
+        ranked.append(
+            {
+                "name": match.group(1).strip(),
+                "score": round(float(match.group(2)) * 100, 1),
+            }
+        )
+    return ranked
 
 # --- Subagent 0: Extraction Agent ---
 from app.services.extractor import extract_structured_symptoms_rag
@@ -95,10 +111,14 @@ def call_evidence_agent(top_matches: str, patient_info: str) -> str:
     {patient_info}
     
     TASK:
-    1. For each disease, provide key diagnostic criteria.
-    2. Explain why this patient's symptoms fit, but DO NOT assume the patient has undergone tests or has genetic mutations unless they are explicitly listed in the 'Patient Info' section.
-    3. If a gene is associated with the disease but not found in the patient, state it as a "Potential target for testing" rather than something the patient "has".
-    4. Provide actionable recommendations (tests, specialists, red flags).
+    1. The 'top_matches' input is already the final ranked shortlist. You MUST use the first 5 diseases from that list.
+    2. You MUST return exactly 5 diseases in 'structured_results' when 5 are available in 'top_matches'.
+    3. Preserve the same rank order as provided in 'top_matches'. Do NOT reorder them.
+    3a. Preserve the exact disease names from 'top_matches'. Do NOT rename diseases, expand abbreviations, or replace them with synonyms.
+    4. For each disease, provide key diagnostic criteria.
+    5. Explain why this patient's symptoms fit, but DO NOT assume the patient has undergone tests or has genetic mutations unless they are explicitly listed in the 'Patient Info' section.
+    6. If a gene is associated with the disease but not found in the patient, state it as a "Potential target for testing" rather than something the patient "has".
+    7. Provide actionable recommendations (tests, specialists, red flags).
 
     FORMAT INSTRUCTIONS:
     Return ONLY valid JSON.
@@ -109,7 +129,7 @@ def call_evidence_agent(top_matches: str, patient_info: str) -> str:
     You MUST return your response as a JSON object with these exact keys:
 
     1. "report_text": A cohesive narrative summary of the clinical findings.
-    2. "structured_results": A list of objects, each containing:
+    2. "structured_results": A list of exactly 5 objects in rank order, each containing:
        - "name": Disease name
        - "score": Match percentage
        - "explanation": A brief, plain-language description of what the disease is.
@@ -123,4 +143,22 @@ def call_evidence_agent(top_matches: str, patient_info: str) -> str:
     """
     response = llm.invoke(prompt)
     print("[DEBUG] Evidence Agent -> Final report generated.")
-    return response.content
+    ranked_matches = _parse_ranked_matches(top_matches)[:5]
+
+    try:
+        cleaned = response.content.strip().replace("```json", "").replace("```", "")
+        payload = json.loads(cleaned)
+        structured_results = payload.get("structured_results")
+
+        if isinstance(structured_results, list) and ranked_matches:
+            for idx, ranked in enumerate(ranked_matches):
+                if idx >= len(structured_results) or not isinstance(structured_results[idx], dict):
+                    break
+                structured_results[idx]["name"] = ranked["name"]
+                structured_results[idx]["score"] = ranked["score"]
+
+            payload["structured_results"] = structured_results[: len(ranked_matches)]
+
+        return json.dumps(payload)
+    except Exception:
+        return response.content

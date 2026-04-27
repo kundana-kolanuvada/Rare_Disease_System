@@ -6,7 +6,8 @@ import axios from 'axios';
  */
 const USE_MOCK_DATA = false;
 
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 
 export interface RecommendationData {
   tests: string[];
@@ -34,9 +35,12 @@ interface DiagnosisRequest {
   ethnicity: string;
   country: string;
   symptoms: string;
+  mainSymptoms?: string;
   familyHistory: string;
   familyHistoryDescription: string;
+  consanguinity?: string;
   symptomOnset: string;
+  geneticTesting?: string;
   previousDiagnoses: string;
   previousTests: string;
 }
@@ -107,20 +111,40 @@ export const runDiagnostics = async (
       {
         ...formData,
         top_k: 25,
+      },
+      {
+        timeout: 300000,
       }
     );
 
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
+      if (error.code === 'ERR_NETWORK' || !error.response) {
+        throw new Error(
+          `Cannot reach the diagnosis server at ${API_BASE_URL}. Make sure the backend is running and accessible.`
+        );
+      }
+
+      const status = error.response?.status;
+      const detail =
+        typeof error.response?.data === 'string'
+          ? error.response.data
+          : JSON.stringify(error.response?.data);
+
       console.error(
         'API Error:',
         error.response?.data || error.message
       );
+
+      throw new Error(
+        status
+          ? `Diagnosis request failed (${status}). ${detail || error.message}`
+          : `Diagnosis request failed. ${error.message}`
+      );
     } else {
       console.error('Unexpected Error:', error);
+      throw new Error('Unexpected error while contacting the diagnosis server.');
     }
-
-    throw new Error('Failed to get diagnosis from the server.');
   }
 };

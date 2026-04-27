@@ -10,6 +10,25 @@ from langchain_core.messages import HumanMessage
 import json
 import re
 
+
+def _clean_name(name, fallback=None):
+    if isinstance(name, str):
+        cleaned = name.strip(" -*:\t\r\n")
+        if cleaned and cleaned.lower() not in {"unknown", "unknown disease", "unnamed disease"}:
+            return cleaned
+    if isinstance(fallback, str):
+        fallback_cleaned = fallback.strip()
+        if fallback_cleaned:
+            return fallback_cleaned
+    return "Unnamed disease"
+
+
+def _score_as_float(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return float("-inf")
+
 llm = get_llm()
 
 # --- Main Agent: The Supervisor ---
@@ -84,13 +103,23 @@ def invoke_atlas_dx(input_data: dict):
             # Standardize the results objects
             standardized_results = []
             for r in results:
+                fallback_name = find_key(r, ["orpha_code", "id", "code"])
                 standardized_results.append({
-                    "name": find_key(r, ["name", "disease_name", "title"]),
+                    "name": _clean_name(
+                        find_key(r, ["name", "disease_name", "title"]),
+                        f"ORPHA:{fallback_name}" if fallback_name else None
+                    ),
                     "score": find_key(r, ["score", "match_score", "probability"]),
                     "explanation": find_key(r, ["explanation", "description", "overview"]),
                     "evidence": find_key(r, ["evidence", "clinical_evidence", "reasoning"]),
                     "recommendations": find_key(r, ["recommendations", "clinical_management"]) or {}
                 })
+
+            standardized_results.sort(
+                key=lambda item: _score_as_float(item.get("score")),
+                reverse=True
+            )
+            standardized_results = standardized_results[:5]
 
             return {
                 "final_matches_text": report_text or last_msg_content,

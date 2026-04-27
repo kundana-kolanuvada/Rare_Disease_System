@@ -9,6 +9,16 @@ from app.models.schemas import DiseaseMatch
 import re
 
 
+def _clean_name(name: str | None, orpha_code: str | None = None) -> str:
+    if isinstance(name, str):
+        cleaned = name.strip(" -*:\t\r\n")
+        if cleaned and cleaned.lower() not in {"unknown", "unknown disease", "unnamed disease"}:
+            return cleaned
+    if orpha_code:
+        return f"ORPHA:{orpha_code}"
+    return "Unnamed disease"
+
+
 # --- Tool 1: Vector Search ---
 @tool
 def disease_vector_search_tool(symptom_text: str, top_k: int = 15) -> str:
@@ -70,7 +80,10 @@ def deterministic_clinical_scorer_tool(matches_json: str, patient_info: str) -> 
                 if isinstance(data, list):
                     for item in data:
                         orpha = str(item.get('orpha_code') or item.get('id', '')).replace('ORPHA:', '')
-                        name = item.get('disease_name') or item.get('name', 'Unknown')
+                        name = _clean_name(
+                            item.get('disease_name') or item.get('name') or item.get('title'),
+                            orpha
+                        )
                         score = item.get('match_score') or item.get('score', 0.5)
                         initial_matches.append(
                             DiseaseMatch(
@@ -97,7 +110,10 @@ def deterministic_clinical_scorer_tool(matches_json: str, patient_info: str) -> 
 
             if orpha_match:
                 orpha_code = orpha_match.group(1)
-                disease_name = name_match.group(1).strip() if name_match else "Unknown Disease"
+                disease_name = _clean_name(
+                    name_match.group(1) if name_match else None,
+                    orpha_code
+                )
                 
                 # Extract score, convert to decimal if it's a percentage
                 raw_s = score_match.group(1) if score_match else "0.5" # Keep 0.5 only as last resort
