@@ -30,8 +30,8 @@ It uses **RAG, semantic embeddings, and multi-agent reasoning** to generate **ra
 ## Setup
 
 ```bash
-git clone https://github.com/kundana-kolanuvada/atlasdx
-cd atlasdx
+git clone https://github.com/kundana-kolanuvada/Rare_Disease_System
+cd Rare_Disease_System
 
 # Backend
 pip install -r requirements.txt
